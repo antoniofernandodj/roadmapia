@@ -1,0 +1,31 @@
+{
+    "languageMode": "strict",
+    "globals": [
+        "ctx",
+        "value",
+        "fetch",
+        "websocket",
+        "sse",
+        "require",
+        "json",
+        "confirm",
+        "toast",
+        "storage",
+        "write_file",
+        "append_file",
+        "after",
+        "every",
+        "navigate",
+        "navigate_back",
+        "viewport",
+        "broadcast",
+        "open_window",
+        "close_window",
+        "io",
+        "arg",
+        "load",
+        "loadfile",
+        "print",
+        "os"
+    ]
+}

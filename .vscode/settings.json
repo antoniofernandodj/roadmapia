@@ -1,0 +1,22 @@
+{
+    // Este projeto não é Roblox (o padrão da extensão): sem isto, o LSP procura
+    // definições da API do Roblox e avisa que não as encontrou.
+    "luau-lsp.platform.type": "standard",
+
+    // Tipa as globais que o glacier injeta (`ctx`, `fetch`, `json`, …). Sem
+    // isto elas viram `any` e o checker deixa passar `fetch(42)`, campo
+    // inexistente em FetchResult e chamada com aridade errada.
+    "luau-lsp.types.definitionFiles": {
+        "glacier": "glacier.d.luau"
+    },
+
+    // Não reportar diagnósticos NO PRÓPRIO arquivo de definições: `declare` é
+    // sintaxe de arquivo de definições, não de código-fonte, então analisá-lo
+    // como fonte produz dezenas de erros falsos. Vale para o arquivo fechado;
+    // com ele ABERTO no editor a extensão reporta assim mesmo (é o
+    // comportamento documentado do `ignoreGlobs`) — ver o cabeçalho dele.
+    "luau-lsp.ignoreGlobs": [
+        "**/_Index/**",
+        "**/*.d.luau"
+    ]
+}

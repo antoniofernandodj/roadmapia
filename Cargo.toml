@@ -1,0 +1,8 @@
+[package]
+name = "roadmapia"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+glacier-ui = { path = "../glacier-ui" }
+iced = "0.14"

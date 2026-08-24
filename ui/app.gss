@@ -1,0 +1,62 @@
+/* Paleta e classes compartilhadas pelas três telas.
+   Carregado por <link rel="stylesheet"> no topo de cada .gv — é global, então
+   basta uma vez, mas declarar nas três mantém cada tela abrível isolada. */
+
+/* ── superfícies ─────────────────────────────────────────────────────── */
+
+.tela        { width: fill; height: fill; background: #11111B; padding: 28; }
+.coluna      { width: fill; spacing: 18; }
+.painel      { width: fill; padding: 20; background: #181825;
+               border-radius: 14; border-width: 1; border-color: #313244; }
+.painel-alto { width: fill; padding: 22; background: #1E1E2E;
+               border-radius: 16; border-width: 1; border-color: #45475A; }
+.faixa       { width: fill; padding: 12 16; background: #181825;
+               border-radius: 10; border-width: 1; border-color: #313244; }
+
+/* ── tipografia ──────────────────────────────────────────────────────── */
+
+.titulo    { size: 28; bold: true; color: #F5E0DC; }
+.subtitulo { size: 13; color: #A6ADC8; }
+.rotulo    { size: 12; bold: true; color: #A6ADC8; }
+.pergunta  { size: 21; bold: true; color: #CDD6F4; }
+.ajuda     { size: 12; color: #7F849C; }
+.corpo     { size: 14; color: #CDD6F4; }
+.nota      { size: 12; color: #6C7086; }
+.erro      { size: 13; color: #F38BA8; }
+.ok        { size: 13; color: #A6E3A1; }
+.contador  { size: 12; bold: true; color: #89B4FA; }
+
+/* ── controles ───────────────────────────────────────────────────────── */
+
+.campo         { width: fill; padding: 12; size: 14; }
+.campo:focus   { border-color: #89B4FA; }
+
+/* O padding VERTICAL é 12 em todas as variantes, e a altura é fixa: numa mesma
+   Row, `.btn` ao lado de `.btn-primario` com paddings diferentes rendia botões
+   de alturas ligeiramente diferentes — desalinhamento que se vê na hora. Só o
+   padding horizontal varia, para dar mais respiro ao botão principal. */
+
+.btn           { height: 44; padding: 12 22; border-radius: 10; background: #313244; text-color: #CDD6F4; }
+.btn:hover     { background: #45475A; }
+.btn:active    { background: #1E1E2E; }
+.btn:disabled  { background: #181825; text-color: #45475A; }
+
+.btn-primario          { height: 44; padding: 12 26; border-radius: 10; background: #89B4FA; text-color: #11111B; bold: true; }
+.btn-primario:hover    { background: #A6C8FF; }
+.btn-primario:active   { background: #6E93D6; }
+.btn-primario:disabled { background: #1E2436; text-color: #45475A; }
+
+.btn-gerar          { height: 44; padding: 12 30; border-radius: 10; background: #A6E3A1; text-color: #11111B; bold: true; }
+.btn-gerar:hover    { background: #C4F0C0; }
+.btn-gerar:disabled { background: #1E2A20; text-color: #45475A; }
+
+/* Botão secundário: menor de propósito (é navegação, não ação), mas com altura
+   própria fixa para os secundários ficarem alinhados entre si. */
+.btn-sutil          { height: 36; padding: 8 16; border-radius: 8; background: #1E1E2E; text-color: #A6ADC8; }
+.btn-sutil:hover    { background: #313244; text-color: #CDD6F4; }
+.btn-sutil:disabled { background: #16161F; text-color: #45475A; }
+
+/* Uma opção sugerida pela IA. A cor de fundo vem inline (o script a calcula a
+   partir do estado de seleção), então aqui ficam só forma e espaçamento. */
+.opcao        { width: fill; padding: 12 16; border-radius: 10; text-color: #CDD6F4; }
+.opcao:hover  { text-color: #FFFFFF; }

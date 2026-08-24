@@ -1,0 +1,70 @@
+```json
+[
+  {
+    "texto": "Qual é o principal obstáculo que você enfrenta ao migrar de Python para Rust?",
+    "ajuda": "Define se o roadmap enfatiza conceitos ou prática hands-on.",
+    "opcoes": [
+      "Entender ownership, borrowing e lifetime",
+      "Lidar com o compilador rigoroso e mensagens de erro",
+      "Estruturar projetos e gerenciar dependências",
+      "Adaptar padrões Pythônicos que não existem em Rust",
+      "Outra (descreva)"
+    ]
+  },
+  {
+    "texto": "Que tipo de CLI você quer construir: utilitário simples, ferramenta com subcomandos, ou aplicação complexa com estado?",
+    "ajuda": "Determina profundidade em parsing, async e arquitetura.",
+    "opcoes": [
+      "Script simples (ler entrada, processar, exibir saída)",
+      "Ferramenta com subcomandos e flags (tipo git, cargo)",
+      "Aplicativo interativo ou com múltiplas operações",
+      "Daemon ou serviço que roda continuamente",
+      "Outra (descreva)"
+    ]
+  },
+  {
+    "texto": "Você precisa trabalhar com async/await, ou seus CLIs são síncronos?",
+    "ajuda": "Async é complexo em Rust; incluir ou pular economiza tempo.",
+    "opcoes": [
+      "Apenas síncrono, sem concorrência",
+      "Concorrência básica (threads, rayon)",
+      "Async/await para I/O não-bloqueante",
+      "Não sei ainda, depende do caso de uso",
+      "Outra (descreva)"
+    ]
+  },
+  {
+    "texto": "Quanto tempo você tem para aprender antes de começar a produzir?",
+    "ajuda": "Equilibra teoria sólida versus prototipagem rápida.",
+    "opcoes": [
+      "Menos de 1 semana (crash course)",
+      "1 a 2 semanas (aprender e começar em paralelo)",
+      "1 mês (aprendizado estruturado antes de código)",
+      "Mais de 1 mês (posso ser minucioso)",
+      "Outra (descreva)"
+    ]
+  },
+  {
+    "texto": "Você quer aprender Rust em profundidade ou apenas o suficiente para CLIs produtivos?",
+    "ajuda": "Define se inclui tópicos avançados (traits, macros, unsafe).",
+    "opcoes": [
+      "Apenas o essencial para CLIs funcionais",
+      "Fundamentos sólidos, sem tópicos avançados",
+      "Cobertura completa, incluindo padrões avançados",
+      "Pragmático: aprendo conforme preciso",
+      "Outra (descreva)"
+    ]
+  },
+  {
+    "texto": "Qual é seu contexto de uso: desenvolvimento pessoal, trabalho em equipe, ou produção crítica?",
+    "ajuda": "Influencia ênfase em testes, documentação e boas práticas.",
+    "opcoes": [
+      "Projeto pessoal, sem pressão de qualidade",
+      "Ferramenta interna de equipe",
+      "Produto que será distribuído ou usado em produção",
+      "Aprendizado puro, sem aplicação imediata",
+      "Outra (descreva)"
+    ]
+  }
+]
+```
