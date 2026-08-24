@@ -1,7 +1,7 @@
 //! roadmapia — gera **roadmaps**, **cursos** ou **guias** a partir de um assunto,
 //! refinando o pedido através de uma entrevista conduzida por IA (OpenRouter).
 //!
-//! O fluxo tem três telas, todas com comportamento em `<script>` Luau (ver `ui/`):
+//! O fluxo tem quatro telas, todas com comportamento em `<script>` Luau (ver `ui/`):
 //!
 //! 1. **`inicio`**  — o assunto, o tipo de artefato (roadmap / curso / guia) e as
 //!    credenciais. O botão "Refinar" NÃO submete: ele pede à IA um questionário
@@ -9,8 +9,11 @@
 //! 2. **`perguntas`** — uma pergunta por vez; cada uma traz opções sugeridas pela
 //!    IA (clicáveis, multi-seleção) **e** um campo livre. Dá para aprofundar
 //!    (gerar mais perguntas a partir do que já foi respondido) e, no fim, gerar.
-//! 3. **`producao`** — o esboço vira centenas de trechos escritos em paralelo,
-//!    um arquivo por trecho, com avanço e custo real na tela.
+//! 3. **`revisao`** — a IA devolveu um esboço (capítulos e subcapítulos, só
+//!    títulos e foco); esta tela deixa corrigi-lo — editar, apagar, reordenar,
+//!    acrescentar — ANTES de qualquer trecho ser escrito de verdade e cobrado.
+//! 4. **`producao`** — o plano confirmado vira centenas de trechos escritos em
+//!    paralelo, um arquivo por trecho, com avanço e custo real na tela.
 //!
 //! Este arquivo é uma casca fina de propósito: registra as telas, carrega os
 //! estilos e semeia a chave da API a partir do ambiente. Toda a lógica vive nos
@@ -20,11 +23,12 @@
 use glacier_ui::{GlacierDaemon, GlacierUI, style};
 use std::path::PathBuf;
 
-/// As três telas, na ordem de registro. A primeira é a inicial.
-const TELAS: [(&str, &str); 3] = [
-    ("inicio", "inicio.gv"),
-    ("perguntas", "perguntas.gv"),
-    ("producao", "producao.gv"),
+/// As quatro telas, na ordem de registro. A primeira é a inicial.
+const TELAS: [(&str, &str); 4] = [
+    ("inicio", "inicio.xml"),
+    ("perguntas", "perguntas.xml"),
+    ("revisao", "revisao.xml"),
+    ("producao", "producao.xml"),
 ];
 
 /// Diretório que contém os templates (`ui/`).
@@ -113,6 +117,7 @@ fn checar() -> std::process::ExitCode {
 
     falhas += rodar_suites_luau();
     falhas += simular_entrevista(&mut motor);
+    falhas += simular_revisao(&mut motor);
     falhas += simular_producao(&mut motor);
     falhas += simular_log(&mut motor);
 
@@ -134,15 +139,7 @@ fn checar() -> std::process::ExitCode {
 fn rodar_suites_luau() -> u8 {
     use glacier_ui::EngineMessage as M;
 
-    // `require("lib/obra")` a partir de `tests/luau/` só acha o módulo por
-    // aqui — o motor procura no diretório do script, em `<dir>/lib`, e nos
-    // caminhos desta variável.
-    //
-    // SAFETY: processo ainda de thread única (o `--check` roda antes de
-    // qualquer runtime), então não há leitor concorrente do ambiente.
-    unsafe { std::env::set_var("GLACIER_LUAU_PATH", ui_dir()) };
-
-    let suite = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/luau/suite.gv");
+    let suite = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/luau/suite.xml");
     let mut motor = GlacierUI::new();
     if let Err(e) = motor.register_component("suite", &suite.to_string_lossy()) {
         eprintln!("✗ suítes Luau: {e}");
@@ -247,6 +244,16 @@ fn checar_alinhamento_dos_botoes(motor: &mut GlacierUI) -> u8 {
     motor.define_data("sem_falhas", "false");
     motor.define_data("sem_perguntas", "false");
     motor.define_data("mostrar_avancado", "true");
+    // A tela `revisao`: sem isto o painel de edição do capítulo (se-lecionado
+    // via `c.selecionado` dentro do `for-each`) fica podado, e a fila de
+    // botões que ele contém nunca é percorrida por este checador.
+    motor.define_data("rev_tem_esboco", "true");
+    motor.define_data("rev_tem_capitulos", "true");
+    motor.define_data(
+        "rev_capitulos_ui",
+        r#"[{"n":"1","titulo":"Cap 1","resumo":"r","n_subs":"1","selecionado":"true"}]"#,
+    );
+    motor.define_data("rev_subs_ui", r#"[{"n":"1"}]"#);
     let _ = motor.reevaluate_all();
 
     for (tela, _) in TELAS {
@@ -417,6 +424,134 @@ fn simular_entrevista(motor: &mut GlacierUI) -> u8 {
 
     if falhas == 0 {
         println!("✓ entrevista (marcar, escrever, navegar, falhar)");
+    }
+    falhas
+}
+
+/// Exercita a tela de revisão do plano com um esboço semeado, sem tocar na
+/// rede: selecionar um capítulo, editar título, adicionar/remover
+/// subcapítulo, reordenar capítulos, e a validação que bloqueia confirmar um
+/// plano incompleto.
+///
+/// Não exercita `excluir_capitulo`: ela abre um `confirm()`, que suspende a
+/// corrotina esperando uma resposta que este harness (sem UI) não dá — o
+/// mesmo motivo por que `simular_producao` nunca chama `produzir()`.
+fn simular_revisao(motor: &mut GlacierUI) -> u8 {
+    use glacier_ui::EngineMessage as M;
+    let mut falhas = 0u8;
+
+    motor.define_data(
+        "esboco_json",
+        r#"{"titulo":"Obra de teste","resumo":"r","publico":"p",
+            "capitulos":[
+              {"titulo":"Primeiro","resumo":"a",
+               "subcapitulos":[{"titulo":"A","foco":"fa"},{"titulo":"B","foco":"fb"}]},
+              {"titulo":"Segundo","resumo":"b",
+               "subcapitulos":[{"titulo":"C","foco":"fc"}]}
+            ]}"#,
+    );
+    motor.define_data("esboco_slug_base", "teste");
+    motor.define_data("tipo", "curso");
+    motor.define_data("assunto", "teste");
+    motor.set_initial_screen("revisao");
+    // Seleciona o 1º capítulo: além de exercitar a seleção, força o script a
+    // projetar o esboço no contexto — o `init` do componente já rodou no
+    // REGISTRO, com o contexto vazio (mesmo motivo de sempre neste app, ver
+    // `simular_producao`).
+    let _ = motor.dispatch(&M::UiClick("selecionar_capitulo:1".into()));
+
+    let verificar = |motor: &GlacierUI, chave: &str, esperado: &str, oque: &str| {
+        let obtido = motor.get_data(chave).cloned().unwrap_or_default();
+        if obtido != esperado {
+            eprintln!("✗ {oque}: {chave} = {obtido:?}, esperava {esperado:?}");
+            return 1;
+        }
+        0
+    };
+
+    falhas += verificar(motor, "rev_tem_esboco", "true", "esboço lido");
+    falhas += verificar(motor, "rev_n_capitulos", "2", "contagem de capítulos");
+    falhas += verificar(motor, "rev_tem_selecao", "true", "capítulo selecionado");
+    falhas += verificar(motor, "rev_cap_titulo", "Primeiro", "painel abriu no capítulo certo");
+    falhas += verificar(motor, "sub_titulo_1", "A", "chave por linha do 1º subcapítulo");
+    falhas += verificar(motor, "sub_titulo_2", "B", "chave por linha do 2º subcapítulo");
+
+    // Editar o título do capítulo selecionado — mesma ação que o `<input>` do
+    // painel dispara a cada tecla.
+    let _ = motor.dispatch(&M::UiInputChanged {
+        action: "titulo_cap_mudou".into(),
+        value: "Primeiro (editado)".into(),
+    });
+    falhas += verificar(motor, "rev_cap_titulo", "Primeiro (editado)", "editar título do capítulo");
+    let _ = motor.dispatch(&M::UiClick("selecionar_capitulo:1".into())); // reprojeta os cards
+    let cards = motor.get_data("rev_capitulos_ui").cloned().unwrap_or_default();
+    if !cards.contains("Primeiro (editado)") {
+        eprintln!("✗ a edição do título não chegou aos cards: {cards}");
+        falhas += 1;
+    }
+
+    // Adicionar e remover subcapítulo.
+    let _ = motor.dispatch(&M::UiClick("adicionar_sub".into()));
+    falhas += verificar(motor, "sub_titulo_3", "Novo subcapítulo", "adicionar_sub acrescenta no molde certo");
+    let _ = motor.dispatch(&M::UiClick("excluir_sub:3".into()));
+    let subs = motor.get_data("rev_subs_ui").cloned().unwrap_or_default();
+    if subs.contains("\"n\":\"3\"") {
+        eprintln!("✗ excluir_sub não removeu o 3º subcapítulo: {subs}");
+        falhas += 1;
+    }
+
+    // Reordenar capítulos: descer o 1º troca de lugar com o 2º. Compara
+    // POSIÇÃO das substrings em vez de um prefixo exato — a ordem dos
+    // CAMPOS dentro de cada objeto JSON não é uma garantia que valha a pena
+    // travar num teste.
+    let _ = motor.dispatch(&M::UiClick("mover_baixo:1".into()));
+    let cards2 = motor.get_data("rev_capitulos_ui").cloned().unwrap_or_default();
+    let pos_segundo = cards2.find("Segundo");
+    let pos_obj2 = cards2.find(r#""n":"2""#);
+    if !matches!((pos_segundo, pos_obj2), (Some(a), Some(b)) if a < b) {
+        eprintln!("✗ mover_baixo não trocou a ordem dos capítulos: {cards2}");
+        falhas += 1;
+    }
+    let _ = motor.dispatch(&M::UiClick("mover_cima:2".into())); // desfaz, para o resto do teste
+
+    // Confirmar com o plano válido: monta o `Plano` de verdade e navega, sem
+    // rede nenhuma envolvida (`O.montar` é local).
+    let _ = motor.dispatch(&M::UiClick("confirmar".into()));
+    falhas += verificar(motor, "tem_erro", "false", "confirmar um plano válido não gera erro");
+    falhas += verificar(motor, "tem_obra", "true", "confirmar monta e grava o Plano");
+    falhas += verificar(motor, "n_capitulos", "2", "…com os 2 capítulos do esboço");
+
+    // Confirmar um plano incompleto (capítulo sem subcapítulo nenhum) barra
+    // com uma mensagem — não monta um `Plano` com um capítulo a menos em
+    // silêncio, que é o que `O.montar` sozinho faria.
+    //
+    // O `confirmar` de cima navegou para `producao` — sem redirecionar o
+    // dispatch de volta, um clique em "confirmar" cairia nessa tela, que não
+    // tem essa ação, e o teste passaria verificando um caminho morto.
+    motor.set_initial_screen("revisao");
+    motor.define_data(
+        "esboco_json",
+        r#"{"titulo":"Obra quebrada","capitulos":[
+              {"titulo":"Sem subcapítulos","subcapitulos":[]}
+            ]}"#,
+    );
+    motor.define_data("erro", "");
+    motor.define_data("tem_erro", "false");
+    let _ = motor.dispatch(&M::UiClick("confirmar".into()));
+    falhas += verificar(motor, "tem_erro", "true", "confirmar um plano incompleto barra");
+    if motor.get_data("erro").map(String::is_empty).unwrap_or(true) {
+        eprintln!("✗ confirmar um plano incompleto: `erro` ficou vazio");
+        falhas += 1;
+    }
+
+    // `confirmar` chama `O.gravar_sumario`, que grava em disco de verdade
+    // (`write_file` aqui não é o dublê de `tests/luau/fila.luau` — só aquela
+    // suíte troca a global). Limpa o que a simulação escreveu em
+    // `saidas/teste`, senão sobra um `README.md` fora do `.gitignore`.
+    let _ = std::fs::remove_dir_all("saidas/teste");
+
+    if falhas == 0 {
+        println!("✓ revisão (selecionar, editar, adicionar/remover, reordenar, validar)");
     }
     falhas
 }

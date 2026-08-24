@@ -1,5 +1,5 @@
 --!nocheck
--- Suíte de `ui/lib/obra.luau` — a máquina de estados que coordena a produção.
+-- Suíte de `ui/scripts/lib/obra.luau` — a máquina de estados que coordena a produção.
 --
 -- É o código mais arriscado do app: seis workers puxam da mesma fila, e um
 -- trecho pego duas vezes custa uma chamada paga a mais (× 200). A suíte simula
@@ -13,7 +13,10 @@
 -- `--!nocheck` porque um harness troca globais do motor de propósito; as
 -- bibliotecas TESTADAS seguem verificadas normalmente.
 
-local O = require("lib/obra")
+-- `tests/luau/` fica fora da árvore de `ui/`, sem `lib/` irmão — navegação
+-- explícita (`../`) é a forma de alcançar `ui/scripts/lib/` sem depender de
+-- `GLACIER_LUAU_PATH` (que exigiria mudar variável de ambiente do processo).
+local O = require("../../ui/scripts/lib/obra")
 
 local M = {}
 
@@ -57,15 +60,19 @@ function M.rodar()
 
     -- ── 1. montagem ─────────────────────────────────────────────────────────────
 
-    local plano = assert(O.montar(esboco(3, 4), "curso-teste"))
+    -- 6 capítulos (não 3): a seção 2 abaixo prova que 6 workers pegam 6
+    -- tarefas SIMULTÂNEAS, e desde que os trechos de um mesmo capítulo saem
+    -- em ordem (um de cada vez — ver seção 2b), isso só é possível com pelo
+    -- menos 6 capítulos disponíveis ao mesmo tempo.
+    local plano = assert(O.montar(esboco(6, 4), "curso-teste"))
     O.gravar_plano(plano)
 
-    conferir(#plano.capitulos == 3, "montar cria os capítulos pedidos")
+    conferir(#plano.capitulos == 6, "montar cria os capítulos pedidos")
     conferir(plano.capitulos[1].subs[1].arquivo
         == "saidas/curso-teste/01-capitulo-1/01-trecho-1-1.md",
         "caminho do trecho é numerado e com slug",
         plano.capitulos[1].subs[1].arquivo)
-    conferir(O.contar(plano).total == 3 * 4 + 3,
+    conferir(O.contar(plano).total == 6 * 4 + 6,
         "contar inclui a abertura de cada capítulo como tarefa")
 
     local sujo = {
@@ -90,6 +97,8 @@ function M.rodar()
 
     -- Cada volta simula um ponto de suspensão: workers pegam tarefas antes de
     -- qualquer um concluir, que é exatamente o entrelaçamento real do pool.
+    -- Com 6 capítulos disponíveis, os 6 saem de capítulos DIFERENTES — nunca
+    -- dois do mesmo capítulo ao mesmo tempo (ver seção 2b).
     for _ = 1, N_WORKERS do
         local t = O.tomar_tarefa()
         if t then table.insert(emvoo, t) end
@@ -123,6 +132,25 @@ function M.rodar()
         total_saidas .. " de " .. c.total)
     conferir(c.prontos == c.total, "tudo termina pronto", c.prontos .. "/" .. c.total)
     conferir(O.tomar_tarefa() == nil, "fila vazia devolve nil")
+
+    -- ── 2b. um trecho por vez, por capítulo ──────────────────────────────────────
+    --
+    -- A garantia que a síntese acumulada depende: dentro de um capítulo, o
+    -- trecho N só é liberado depois que o N-1 está PRONTO (ou ERRO) — nunca
+    -- dois do mesmo capítulo "fazendo" ao mesmo tempo. Capítulos DIFERENTES
+    -- continuam livres.
+
+    O.gravar_plano(assert(O.montar(esboco(2, 5), "sequencial")))
+    local a = O.tomar_tarefa()
+    local b = O.tomar_tarefa()
+    conferir(a ~= nil and b ~= nil and a.cap ~= b.cap,
+        "com só 2 capítulos, os 2 primeiros trechos vêm de capítulos diferentes")
+    conferir(O.tomar_tarefa() == nil,
+        "um 3º trecho não sai: os 2 capítulos já têm um em voo cada")
+    O.concluir(a, "conteúdo")
+    local d = O.tomar_tarefa()
+    conferir(d ~= nil and d.cap == a.cap and d.sub == a.sub + 1,
+        "concluir libera o PRÓXIMO trecho do MESMO capítulo, em ordem")
 
     -- ── 3. a abertura espera os trechos ─────────────────────────────────────────
 
@@ -168,6 +196,42 @@ function M.rodar()
     conferir(O.contar(O.plano()).erros == 0, "reenfileirar não marca erro")
     conferir(chave(O.tomar_tarefa()) == chave(t3), "a tarefa reenfileirada volta a sair")
 
+    -- ── 4b. a síntese que cada trecho passa adiante ─────────────────────────────
+
+    local corpo, sintese = O.extrair_sintese(
+        "## Título\n\ncorpo do trecho\n\n<!--SINTESE-->\n- ponto um\n<!--/SINTESE-->"
+    )
+    conferir(corpo == "## Título\n\ncorpo do trecho",
+        "extrair_sintese separa o corpo do bloco", corpo)
+    conferir(sintese:find("ponto um", 1, true) ~= nil,
+        "extrair_sintese devolve o conteúdo do bloco")
+
+    local corpo2, sintese2 = O.extrair_sintese("só corpo, sem bloco nenhum")
+    conferir(corpo2 == "só corpo, sem bloco nenhum", "sem o bloco, o corpo sai inteiro")
+    conferir(sintese2 == "", "sem o bloco, a síntese sai vazia")
+
+    -- `O.concluir` grava a síntese extraída no trecho, e o bloco some do
+    -- arquivo — ele é para o PRÓXIMO trecho, não para quem lê a obra.
+    arquivos = {}
+    O.gravar_plano(assert(O.montar(esboco(1, 1), "sintese")))
+    local t4 = O.tomar_tarefa()
+    O.concluir(t4, "## X\n\ncorpo\n\n<!--SINTESE-->\n- resumo do trecho\n<!--/SINTESE-->")
+    local sub_pronto = O.plano().capitulos[1].subs[1]
+    conferir(sub_pronto.sintese:find("resumo do trecho", 1, true) ~= nil,
+        "concluir grava a síntese extraída no trecho")
+    local gravado = arquivos[sub_pronto.arquivo]
+    conferir(gravado ~= nil and gravado:find("SINTESE", 1, true) == nil,
+        "o bloco de síntese não vaza para o arquivo gravado")
+
+    -- A abertura reaproveita o próprio texto como síntese do capítulo — sem
+    -- chamada extra nenhuma.
+    local abertura_tarefa = O.tomar_tarefa()
+    conferir(abertura_tarefa ~= nil and abertura_tarefa.tipo == "abertura",
+        "capítulo de 1 trecho libera a abertura em seguida")
+    O.concluir(abertura_tarefa, "o capítulo 1 trata de X e Y")
+    conferir(O.plano().capitulos[1].sintese:find("capítulo 1 trata de X e Y", 1, true) ~= nil,
+        "a abertura vira a síntese do capítulo")
+
     -- ── 5. vizinhança (o que impede 200 textos repetidos) ───────────────────────
 
     O.gravar_plano(assert(O.montar(esboco(3, 3), "viz")))
@@ -178,6 +242,19 @@ function M.rodar()
     conferir(v.depois:find("Trecho 2.3", 1, true) ~= nil, "vizinhança aponta o trecho seguinte")
     conferir(v.depois:find("Capítulo 3", 1, true) ~= nil, "vizinhança aponta capítulos seguintes")
     conferir(v.antes:find("Capítulo 3", 1, true) == nil, "o que vem depois não vaza para antes")
+
+    -- Com síntese de verdade disponível, vizinhança usa ela em vez de só
+    -- título/foco/resumo planejados.
+    local plano_vs = O.plano()
+    plano_vs.capitulos[1].sintese = "SINTESE-CAP-1"
+    plano_vs.capitulos[2].subs[1].sintese = "SINTESE-SUB-2-1"
+    O.gravar_plano(plano_vs)
+    local vs1 = O.vizinhanca(O.plano(), 2, 2)
+    conferir(vs1.antes:find("SINTESE-SUB-2-1", 1, true) ~= nil,
+        "vizinhança usa a síntese de um trecho já escrito do mesmo capítulo")
+    local vs2 = O.vizinhanca(O.plano(), 2, 1)
+    conferir(vs2.antes:find("SINTESE-CAP-1", 1, true) ~= nil,
+        "vizinhança usa a síntese de um capítulo anterior quando ela existe")
 
     -- ── 6. índices em disco ─────────────────────────────────────────────────────
 

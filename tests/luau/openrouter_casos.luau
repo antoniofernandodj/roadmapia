@@ -1,6 +1,6 @@
 --!nocheck
--- Suíte de `ui/lib/openrouter.luau`: o recorte de JSON e a CONTABILIDADE DE
--- CUSTO — as duas coisas que, quando quebram, quebram calado.
+-- Suíte de `ui/scripts/lib/openrouter.luau`: o recorte de JSON e a
+-- CONTABILIDADE DE CUSTO — as duas coisas que, quando quebram, quebram calado.
 --
 -- Roda no interpretador do glacier (ver `suite.luau`), com `json` de verdade.
 -- Só `fetch` é substituído, por respostas enlatadas: é o que permite exercitar
@@ -8,7 +8,9 @@
 --
 -- `--!nocheck` porque um harness troca globais do motor de propósito.
 
-local OR = require("lib/openrouter")
+-- `tests/luau/` fica fora da árvore de `ui/`, sem `lib/` irmão — navegação
+-- explícita (`../`) é a forma de alcançar `ui/scripts/lib/`.
+local OR = require("../../ui/scripts/lib/openrouter")
 
 local M = {}
 

@@ -1,5 +1,5 @@
 /* Paleta e classes compartilhadas pelas três telas.
-   Carregado por <link rel="stylesheet"> no topo de cada .gv — é global, então
+   Carregado por <link rel="stylesheet"> no topo de cada .xml — é global, então
    basta uma vez, mas declarar nas três mantém cada tela abrível isolada. */
 
 /* ── superfícies ─────────────────────────────────────────────────────── */
