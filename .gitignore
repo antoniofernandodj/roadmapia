@@ -1,3 +1,4 @@
 /target
-/saidas
+*.log
+*.json
 /ui/.glacier-storage

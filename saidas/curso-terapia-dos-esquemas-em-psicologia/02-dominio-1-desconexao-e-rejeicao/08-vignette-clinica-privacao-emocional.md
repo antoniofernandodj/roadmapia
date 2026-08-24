@@ -1,0 +1,19 @@
+## Vignette Clínica: Privação Emocional
+
+Maria, uma mulher de 32 anos, procurou terapia após sentir-se constantemente insatisfeita em seus relacionamentos. Ela descreveu uma sensação persistente de vazio emocional, como se algo crucial estivesse faltando em suas interações com outras pessoas. "Eu sempre sinto que ninguém realmente me entende ou cuida de mim", ela confessou. "Eu me sinto sozinha, mesmo quando estou cercada por pessoas."
+
+Ao explorar sua história, Maria revelou que cresceu em um ambiente familiar onde suas necessidades emocionais eram frequentemente negligenciadas. Seus pais eram fisicamente presentes, mas emocionalmente distantes. "Eles nunca me perguntavam como eu estava ou se eu precisava de algo", ela lembrou. "Eles estavam ocupados com seus próprios problemas, e eu aprendi a não incomodar."
+
+Maria desenvolveu o esquema de Privação Emocional, caracterizado pela crença de que suas necessidades emocionais nunca serão atendidas pelos outros. Esse esquema se manifesta em sua vida adulta através de relacionamentos nos quais ela se sente emocionalmente carente e subentendida. Ela frequentemente escolhe parceiros que são incapazes de fornecer o suporte emocional que ela deseja, perpetuando o ciclo de privação.
+
+Durante uma sessão, Maria compartilhou um exemplo recente que ilustrava seu esquema em ação. Ela havia planejado um encontro com seu namorado, esperando que ele a surpreendesse com um gesto romântico. No entanto, ele chegou tarde, sem nenhum plano específico, e passou a maior parte do tempo no celular. Maria sentiu-se profundamente desapontada e rejeitada, mas não expressou seus sentimentos. "Eu sabia que ele não iria entender", ela disse. "Eu apenas engoli meu desapontamento e segui em frente."
+
+Esse padrão de comportamento é típico do esquema de Privação Emocional. Maria internalizou a crença de que suas necessidades emocionais não serão atendidas, então ela evita expressá-las, perpetuando a sensação de vazio e solidão. Essa dinâmica também se estende para suas amizades, onde ela frequentemente se sente invisível e não valorizada.
+
+Maria também relatou uma tendência a idealizar relacionamentos no início, projetando suas necessidades emocionais não atendidas em novos conhecidos. No entanto, essa idealização rapidamente se desfaz quando ela percebe que suas expectativas não são atendidas, levando a sentimentos de decepção e frustração. "Eu sempre espero que desta vez será diferente", ela admitiu. "Mas no final, eu sempre me sinto decepcionada."
+
+A terapia focou em ajudar Maria a reconhecer e validar suas próprias necessidades emocionais, algo que ela nunca havia aprendido a fazer. Através de exercícios de autocompaixão e autorreflexão, Maria começou a entender que suas necessidades emocionais são legítimas e merecem atenção. Ela também trabalhou na comunicação assertiva, aprendendo a expressar suas necessidades de maneira clara e direta, sem medo de rejeição.
+
+Embora Maria ainda esteja no processo de desconstruir seu esquema de Privação Emocional, ela já começou a notar mudanças significativas em sua vida. "Eu estou aprendendo a cuidar de mim mesma e a não depender tanto dos outros para me sentir completa", ela concluiu. "É um processo, mas eu finalmente sinto que estou no caminho certo."
+
+Essa vignette ilustra como o esquema de Privação Emocional pode se manifestar na vida de uma pessoa, influenciando seus relacionamentos e sua percepção de si mesma. Através da terapia, Maria está aprendendo a reconhecer e atender suas próprias necessidades emocionais, rompendo o ciclo de privação e solidão que caracterizou sua vida até então.
