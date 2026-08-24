@@ -68,10 +68,19 @@ declare function navigate(tela: string): ()
 declare function navigate_back(): ()
 declare function viewport(): { width: number, height: number }
 
--- Arquivos. Ambos criam os diretórios que faltarem e devolvem `(ok, erro?)`;
--- `write_file` sobrescreve, `append_file` acrescenta.
+-- Diálogo de arquivo/pasta NATIVO do SO. Suspende como `confirm`/`fetch` e
+-- retoma com o caminho escolhido, ou `nil` se o usuário cancelou.
+declare function open_file(opts: any?): string?
+declare function open_files(opts: any?): { string }?
+declare function save_file(opts: any?): string?
+declare function pick_folder(opts: any?): string?
+
+-- Arquivos. Todos criam os diretórios que faltarem e devolvem `(ok, erro?)`;
+-- `write_file` sobrescreve, `append_file` acrescenta, `zip_dir` compacta um
+-- diretório inteiro num `.zip` escrito direto no caminho de destino.
 declare function write_file(caminho: string, conteudo: string): (boolean, string?)
 declare function append_file(caminho: string, conteudo: string): (boolean, string?)
+declare function zip_dir(origem: string, destino: string): (boolean, string?)
 
 -- Múltiplas janelas (runner GlacierDaemon).
 declare function broadcast(evento: string, payload: any?): ()

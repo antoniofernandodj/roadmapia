@@ -479,6 +479,7 @@ function O.projetar(rotulos: { nome: string, unidades: string }?, plano: Plano?)
         ctx.tem_erros = "false"
         ctx.sem_falhas = "true"
         ctx.nada_a_fazer = "true"
+        ctx.pode_salvar = "false"
         return nil
     end
 
@@ -494,6 +495,10 @@ function O.projetar(rotulos: { nome: string, unidades: string }?, plano: Plano?)
     ctx.sem_falhas = (c.erros > 0) and "false" or "true"
     ctx.rotulo_erros = tostring(c.erros) .. " falharam"
     ctx.nada_a_fazer = (c.prontos >= c.total) and "true" or "false"
+    -- Diferente de `nada_a_fazer` (também "true" com `total == 0`, obra
+    -- ainda não montada): só existe algo pra salvar quando pelo menos um
+    -- trecho foi produzido de verdade. Controla o botão "Salvar obra".
+    ctx.pode_salvar = (c.prontos >= c.total and c.total > 0) and "true" or "false"
     ctx.rotulo_produzir = (c.prontos > 0) and "Continuar produção" or "Produzir a obra"
 
     if rotulos ~= nil then

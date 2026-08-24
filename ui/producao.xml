@@ -129,6 +129,13 @@
       text="Copiar caminho"
       on_click="clipboard:obra_pasta"
     />
+    <button
+      class="btn"
+      text="Salvar obra"
+      on_click="salvar_obra"
+      if="{pode_salvar}"
+      equals="true"
+    />
     <text content="" width="fill" />
     <text class="nota" content="{obra_pasta}" />
   </row>

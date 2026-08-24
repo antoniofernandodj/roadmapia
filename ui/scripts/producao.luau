@@ -367,6 +367,30 @@ function refazer_falhas(): ()
     toast({ message = tostring(n) .. " trechos devolvidos à fila.", kind = "info" })
 end
 
+function salvar_obra(): ()
+    local plano = O.plano()
+    if plano == nil then
+        return
+    end
+    -- Pede o destino ANTES de zipar: `zip_dir` escreve o .zip direto lá,
+    -- sem passo de "zipar em algum lugar e depois mover" (moveria bytes
+    -- binários por uma fronteira Lua↔Rust que só é UTF-8-safe hoje).
+    local destino = pick_folder({ title = "Onde salvar a obra?" })
+    if destino == nil then
+        return -- cancelado
+    end
+    local slug = plano.pasta:match("([^/]+)$") or "obra"
+    local caminho_zip = destino .. "/" .. slug .. ".zip"
+    local ok, erro = zip_dir(plano.pasta, caminho_zip)
+    if not ok then
+        L.erro("producao", "falha ao salvar obra: " .. tostring(erro))
+        toast({ title = "Falha ao salvar", message = tostring(erro), kind = "error" })
+        return
+    end
+    L.info("producao", "obra salva em " .. caminho_zip)
+    toast({ title = "Obra salva", message = caminho_zip, kind = "success" })
+end
+
 -- ── projeção para a tela ────────────────────────────────────────────────────
 
 function somar_custo(custo): ()
