@@ -146,9 +146,12 @@ function P.esboco(assunto: string, tipo: string?, transcricao: string, n_unidade
         '        "subcapitulos": [',
         '          {',
         '            "titulo": "título do ' .. r.subunidade .. '",',
-        '            "foco":   "2 a 3 frases dizendo EXATAMENTE o que este texto',
-        '                       deve ensinar, e o que ele NÃO deve cobrir por',
-        '                       pertencer a outro ' .. r.subunidade .. '"',
+        -- Em UMA linha, e é de propósito: o exemplo anterior quebrava esta
+        -- string em três linhas para caber na margem — e virava um JSON
+        -- inválido, que os modelos mais fracos copiavam fielmente. O erro
+        -- chegava na tela como "o modelo devolveu um JSON inválido"; o modelo
+        -- só tinha imitado o molde que a gente mandou.
+        '            "foco": "2 a 3 frases dizendo EXATAMENTE o que este texto deve ensinar, e o que ele NÃO deve cobrir por pertencer a outro ' .. r.subunidade .. '"',
         '          }',
         '        ]',
         '      }',
@@ -156,6 +159,8 @@ function P.esboco(assunto: string, tipo: string?, transcricao: string, n_unidade
         '  }',
         "",
         "Nada além do JSON. Sem conteúdo didático aqui — só a arquitetura.",
+        "Cada valor de texto ocupa UMA linha: quebra de linha dentro de aspas",
+        "não é JSON válido e derruba a geração inteira.",
     }, "\n")
 end
 

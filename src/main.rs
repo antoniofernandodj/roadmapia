@@ -549,6 +549,9 @@ fn simular_revisao(motor: &mut GlacierUI) -> u8 {
     // suíte troca a global). Limpa o que a simulação escreveu em
     // `saidas/teste`, senão sobra um `README.md` fora do `.gitignore`.
     let _ = std::fs::remove_dir_all("saidas/teste");
+    // Idem para o despejo que a suíte de `openrouter` grava (ela redireciona
+    // o caminho para não apagar o do usuário — ver `openrouter_casos.luau`).
+    let _ = std::fs::remove_file("saidas/teste-resposta-invalida.txt");
 
     if falhas == 0 {
         println!("✓ revisão (selecionar, editar, adicionar/remover, reordenar, validar)");

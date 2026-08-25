@@ -55,6 +55,89 @@ local function testar_recorte()
     end
 end
 
+-- ── o remendo de JSON malformado ────────────────────────────────────────────
+
+-- Os defeitos que um modelo comete DE VERDADE, e que custam uma geração paga
+-- inteira quando `json.decode` os rejeita. O caso da quebra de linha dentro da
+-- string é o que derrubou uma geração real de esboço (deepseek, 10×20): o
+-- próprio prompt trazia um exemplo com a string partida em três linhas, e o
+-- modelo copiou o molde.
+local CASOS_REMENDO = {
+    {
+        nome = "quebra de linha literal dentro de uma string",
+        texto = '{"foco": "duas frases\naqui, partidas"}',
+        confere = function(v)
+            return v.foco == "duas frases\naqui, partidas"
+        end,
+    },
+    {
+        nome = "vírgula pendurada antes de } e de ]",
+        texto = '{"a": [1, 2,], "b": "x",}',
+        confere = function(v)
+            return v.b == "x" and #v.a == 2
+        end,
+    },
+    {
+        -- O caso real: um esboço de 11 capítulos inteiro, perdido por duas
+        -- aspas soltas no meio de dois `foco`.
+        nome = "aspas não escapadas dentro de uma string",
+        texto = '{"foco": "Objeções ao "tudo vale". Não discute respostas."}',
+        confere = function(v)
+            return v.foco == 'Objeções ao "tudo vale". Não discute respostas.'
+        end,
+    },
+    {
+        -- A ambiguidade que o lookahead resolve: aqui a aspa vem seguida de
+        -- vírgula, igual a um fecha-string — mas depois da vírgula continua
+        -- prosa, e prosa não começa valor nenhum de JSON.
+        nome = "aspas seguidas de vírgula, com prosa depois",
+        texto = '{"a": "chamou de "ciência normal", segundo Kuhn", "b": 1}',
+        confere = function(v)
+            return v.a == 'chamou de "ciência normal", segundo Kuhn' and v.b == 1
+        end,
+    },
+    {
+        nome = "tabulação literal dentro de uma string",
+        texto = '{"t": "col1\tcol2"}',
+        confere = function(v)
+            return v.t == "col1\tcol2"
+        end,
+    },
+}
+
+local function testar_remendo()
+    for _, caso in ipairs(CASOS_REMENDO) do
+        -- A premissa do caso: o texto original REALMENTE não decodifica. Sem
+        -- isto o teste passaria com um remendo que não faz nada.
+        conferir(not (pcall(json.decode, caso.texto)),
+            "remendo: " .. caso.nome .. " (não decodifica cru)")
+        local ok, valor = pcall(json.decode, OR.reparar_json(caso.texto))
+        conferir(ok and caso.confere(valor),
+            "remendo: " .. caso.nome .. " (decodifica remendado, conteúdo intacto)")
+    end
+
+    -- O remendo não pode MEXER no que já está certo — nem na vírgula e na
+    -- quebra de linha que fazem parte do texto, escapadas como manda o JSON.
+    local intacto = '{"a": "x, y", "b": "linha\\nlinha", "c": [1, 2]}'
+    conferir(OR.reparar_json(intacto) == intacto,
+        "remendo: JSON válido passa incólume", OR.reparar_json(intacto))
+
+    conferir(OR.parece_cortado('{"a": [{"b": 1}, {"c": 2}'),
+        "cortado: objeto que acaba no meio")
+    conferir(OR.parece_cortado('{"a": "texto sem fech'),
+        "cortado: string que acaba no meio")
+    conferir(not OR.parece_cortado('{"a": [1, 2]}'),
+        "cortado: JSON inteiro não é cortado")
+    conferir(not OR.parece_cortado('{"a": "chave } aqui"}'),
+        "cortado: chave dentro de string não conta")
+
+    -- O remendo não pode inventar um fecha-string onde havia um de verdade: uma
+    -- string vazia (`""`) e um valor seguido de `,` continuam fechando.
+    local vazio = '{"a": "", "b": ["x", "y"], "c": {"d": "e"}}'
+    conferir(OR.reparar_json(vazio) == vazio,
+        "remendo: string vazia e aninhamento passam incólumes", OR.reparar_json(vazio))
+end
+
 -- ── contabilidade de custo ──────────────────────────────────────────────────
 
 --- Instala um `fetch` que devolve sempre a mesma resposta enlatada.
@@ -98,6 +181,17 @@ local function testar_custo()
         conferir(custo == 0.0842, "…E DEVOLVE O CUSTO (foi faturado)", tostring(custo))
     end)
 
+    -- Alguns provedores do OpenRouter reportam o corte SÓ no campo nativo, com
+    -- `stop` no normalizado. Ler só o normalizado deixava o JSON pela metade
+    -- seguir adiante e falhar depois como "JSON inválido" — no lugar errado.
+    com_fetch(resposta(200, '{' .. uso .. ',"choices":[{"finish_reason":"stop",'
+        .. '"native_finish_reason":"length","message":{"content":"pela metade"}}]}'), function()
+        local ok, msg, custo = chat_de_teste()
+        conferir(not ok, "corte reportado só no campo nativo é reprovado")
+        conferir(msg:find("cortada", 1, true) ~= nil, "…com a mesma mensagem", tostring(msg))
+        conferir(custo == 0.0842, "…e devolve o custo", tostring(custo))
+    end)
+
     com_fetch(resposta(200, '{' .. uso .. ',"choices":[{"finish_reason":"stop",'
         .. '"message":{"content":""}}]}'), function()
         local ok, _, custo = chat_de_teste()
@@ -138,11 +232,44 @@ local function testar_custo()
         conferir(not ok2, "chat_json reprova resposta sem JSON")
         conferir(custo2 == 0.0842, "…e ainda assim contabiliza o custo", tostring(custo2))
     end)
+
+    -- O custo tem de atravessar TAMBÉM os erros que o `chat` já reprovou: o
+    -- corte por tokens é a geração mais cara que existe (saída no teto), e o
+    -- `chat_json` zerava o valor no repasse.
+    com_fetch(resposta(200, '{' .. uso .. ',"choices":[{"finish_reason":"length",'
+        .. '"message":{"content":"{\\"a\\": 1"}}]}'), function()
+        local ok2, msg2, custo2 = OR.chat_json({ key = "k", user = "oi" })
+        conferir(not ok2, "chat_json reprova o corte por tokens")
+        conferir(custo2 == 0.0842, "…SEM zerar o custo no repasse", tostring(custo2))
+        conferir(tostring(msg2):find("cortada", 1, true) ~= nil, "…e diz que foi corte")
+    end)
+
+    -- O caminho que motivou tudo isto: JSON malformado que o remendo salva. A
+    -- chamada foi paga; jogá-la fora por causa de uma quebra de linha era o
+    -- desperdício mais caro do app.
+    com_fetch(resposta(200, '{' .. uso .. ',"choices":[{"finish_reason":"stop",'
+        .. '"message":{"content":"{\\"foco\\": \\"parte um\\nparte dois\\"}"}}]}'), function()
+        local ok2, valor2, custo2 = OR.chat_json({ key = "k", user = "oi" })
+        conferir(ok2, "chat_json conserta a quebra de linha dentro da string",
+            tostring(valor2))
+        conferir(ok2 and valor2.foco == "parte um\nparte dois", "…preservando o texto")
+        conferir(custo2 == 0.0842, "…e contabiliza o custo", tostring(custo2))
+    end)
 end
 
 function M.rodar()
+    -- O despejo da resposta crua vai para um arquivo de TESTE enquanto a suíte
+    -- roda. Não é asseio: os casos de erro do `chat_json` gravam de verdade, e
+    -- rodar os testes apagava a última resposta inválida de uma sessão real —
+    -- justamente a prova que esse arquivo existe para guardar.
+    local caminho_real = OR.ARQUIVO_RESPOSTA_CRUA
+    OR.ARQUIVO_RESPOSTA_CRUA = "saidas/teste-resposta-invalida.txt"
+
     testar_recorte()
+    testar_remendo()
     testar_custo()
+
+    OR.ARQUIVO_RESPOSTA_CRUA = caminho_real
 end
 
 return M
