@@ -20,7 +20,7 @@
         <button
           class="btn-sutil"
           text="← início"
-          navigateTo="inicio"
+          navigate_to="inicio"
         />
       </row>
 
@@ -104,7 +104,7 @@
       </column>
 
       <!-- Sem perguntas na memória (entrou direto nesta tela). -->
-      <column class="painel-alto" if="{tem_perguntas}" notEquals="true">
+      <column class="painel-alto" if="{tem_perguntas}" not_equals="true">
         <text
           class="pergunta"
           content="Nenhuma entrevista em andamento"
@@ -116,7 +116,7 @@
         <button
           class="btn-primario"
           text="Ir para o início"
-          navigateTo="inicio"
+          navigate_to="inicio"
         />
       </column>
 

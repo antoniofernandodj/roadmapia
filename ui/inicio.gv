@@ -95,7 +95,7 @@
               />
             </column>
 
-            <column class="grupo" if="{api_key_do_ambiente}" notEquals="true">
+            <column class="grupo" if="{api_key_do_ambiente}" not_equals="true">
               <text
                 class="ajuda"
                 content="Chave da API (fica guardada localmente)"
@@ -116,7 +116,7 @@
             class="nota"
             content="{resumo_config}"
             if="{mostrar_avancado}"
-            notEquals="true"
+            not_equals="true"
           />
         </column>
 
@@ -131,7 +131,7 @@
           <button
             class="btn"
             text="Retomar entrevista"
-            navigateTo="perguntas"
+            navigate_to="perguntas"
             hidden="{sem_perguntas}"
           />
           <spinner class="spinner-azul" hidden="{parado}" />

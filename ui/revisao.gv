@@ -16,15 +16,15 @@
     <button
       class="btn-sutil"
       text="← respostas"
-      navigateTo="perguntas"
+      navigate_to="perguntas"
     />
   </row>
 
   <!-- ── sem esboço ainda ───────────────────────────────────────────── -->
-  <column class="painel-alto" if="{rev_tem_esboco}" notEquals="true">
+  <column class="painel-alto" if="{rev_tem_esboco}" not_equals="true">
     <text class="pergunta" content="Nada planejado ainda" />
     <text class="ajuda" content="Responda a entrevista e clique em Generate." />
-    <button class="btn-primario" text="Ir para as perguntas" navigateTo="perguntas" />
+    <button class="btn-primario" text="Ir para as perguntas" navigate_to="perguntas" />
   </column>
 
   <column class="secao cresce" if="{rev_tem_esboco}" equals="true">

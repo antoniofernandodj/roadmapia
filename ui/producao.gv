@@ -16,20 +16,20 @@
     <button
       class="btn-sutil"
       text="← respostas"
-      navigateTo="perguntas"
+      navigate_to="perguntas"
     />
     <button
       class="btn-sutil"
       text="início"
-      navigateTo="inicio"
+      navigate_to="inicio"
     />
   </row>
 
   <!-- ── sem plano ainda ────────────────────────────────────────────── -->
-  <column class="painel-alto" if="{tem_obra}" notEquals="true">
+  <column class="painel-alto" if="{tem_obra}" not_equals="true">
     <text class="pergunta" content="Nada planejado ainda" />
     <text class="ajuda" content="Responda a entrevista e clique em Generate." />
-    <button class="btn-primario" text="Ir para as perguntas" navigateTo="perguntas" />
+    <button class="btn-primario" text="Ir para as perguntas" navigate_to="perguntas" />
   </column>
 
   <!-- ── painel de avanço ───────────────────────────────────────────── -->
