@@ -48,7 +48,7 @@ export type Handle = {
 -- Por isso `any`, e não `string`: os dois lados da conversão são válidos.
 declare ctx: { [string]: any }
 
--- O texto de um `onChange`/`onToggle` — 1º argumento da ação e também global.
+-- O texto de um `on_change`/`on_toggle` — 1º argumento da ação e também global.
 declare value: string?
 
 -- Rede. `fetch` SUSPENDE a corrotina da ação (não bloqueia a UI) e retoma com

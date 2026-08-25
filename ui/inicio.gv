@@ -3,12 +3,12 @@
    com um questionário sob medida, que é o que a tela `perguntas` consome. -->
 
 <container class="tela">
-  <scrollable direction="vertical" width="fill" height="fill">
-    <container width="fill" alignX="Center">
-      <column class="coluna" width="720">
+  <scrollable class="largo cresce" direction="vertical">
+    <container class="centro">
+      <column class="miolo">
 
-        <row width="fill" spacing="12" alignY="Center">
-          <column spacing="4" width="fill">
+        <row class="linha">
+          <column class="dupla">
             <text class="titulo" content="roadmapia" />
             <text
               class="subtitulo"
@@ -19,14 +19,13 @@
         </row>
 
         <!-- ── 1. o assunto ───────────────────────────────────────────────── -->
-        <column class="painel-alto" spacing="10">
+        <column class="painel-alto">
           <text class="rotulo" content="1 · SOBRE O QUE?" />
           <input
             class="campo"
             placeholder="ex.: Rust para quem já programa em Python, com foco em CLIs"
             value="assunto"
-            onChange="assunto_mudou"
-            width="fill"
+            on_change="assunto_mudou"
           />
           <text
             class="ajuda"
@@ -35,31 +34,31 @@
         </column>
 
         <!-- ── 2. o tipo de artefato ──────────────────────────────────────── -->
-        <column class="painel" spacing="12">
+        <column class="painel">
           <text class="rotulo" content="2 · O QUE GERAR?" />
-          <column spacing="10" width="fill">
+          <column class="bloco">
             <checkbox
               label="Roadmap — trilha por fases, com marcos e dependências"
               checked="tipo_roadmap"
-              onToggle="escolher_tipo:roadmap"
+              on_toggle="escolher_tipo:roadmap"
             />
             <checkbox
               label="Curso — módulos, aulas, exercícios e avaliação"
               checked="tipo_curso"
-              onToggle="escolher_tipo:curso"
+              on_toggle="escolher_tipo:curso"
             />
             <checkbox
               label="Guia — referência prática, direto ao ponto"
               checked="tipo_guia"
-              onToggle="escolher_tipo:guia"
+              on_toggle="escolher_tipo:guia"
             />
           </column>
         </column>
 
         <!-- ── 3. o modelo ────────────────────────────────────────────────── -->
-        <column class="painel" spacing="12">
-          <row width="fill" spacing="10" alignY="Center">
-            <text class="rotulo" content="3 · MODELO E CHAVE" width="fill" />
+        <column class="painel">
+          <row class="linha">
+            <text class="rotulo largo" content="3 · MODELO E CHAVE" />
             <button
               class="btn-sutil"
               text="{rotulo_avancado}"
@@ -67,20 +66,19 @@
             />
           </row>
 
-          <column spacing="10" width="fill" if="{mostrar_avancado}">
-            <column spacing="6" width="fill">
+          <column class="bloco" if="{mostrar_avancado}">
+            <column class="grupo">
               <text class="ajuda" content="Modelo (OpenRouter)" />
               <select
+                class="campo"
                 options="modelos"
                 value="modelo"
-                onChange="modelo_mudou"
+                on_change="modelo_mudou"
                 placeholder="escolha um modelo"
-                width="fill"
-                padding="10"
               />
             </column>
 
-            <column spacing="6" width="fill">
+            <column class="grupo">
               <text
                 class="ajuda"
                 content="Ou um id qualquer do catálogo do OpenRouter"
@@ -89,12 +87,11 @@
                 class="campo"
                 placeholder="autor/modelo"
                 value="modelo"
-                onChange="modelo_mudou"
-                width="fill"
+                on_change="modelo_mudou"
               />
             </column>
 
-            <column spacing="6" width="fill" if="{api_key_do_ambiente}" notEquals="true">
+            <column class="grupo" if="{api_key_do_ambiente}" notEquals="true">
               <text
                 class="ajuda"
                 content="Chave da API (fica guardada localmente)"
@@ -103,9 +100,8 @@
                 class="campo"
                 placeholder="sk-or-v1-..."
                 value="api_key"
-                onChange="chave_mudou"
+                on_change="chave_mudou"
                 secure="true"
-                width="fill"
               />
             </column>
             <text class="ok" content="Chave lida de OPENROUTER_API_KEY."
@@ -121,7 +117,7 @@
         </column>
 
         <!-- ── ação ───────────────────────────────────────────────────────── -->
-        <row spacing="14" width="fill" alignY="Center">
+        <row class="linha">
           <button
             class="btn-primario"
             text="Refinar com perguntas →"
@@ -134,13 +130,8 @@
             navigateTo="perguntas"
             hidden="{sem_perguntas}"
           />
-          <spinner
-            width="20"
-            height="20"
-            color="#89B4FA"
-            hidden="{parado}"
-          />
-          <text class="corpo" content="{status}" width="fill" />
+          <spinner class="spinner-azul" hidden="{parado}" />
+          <text class="corpo largo" content="{status}" />
         </row>
 
         <container class="faixa" if="{tem_erro}" equals="true">

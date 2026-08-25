@@ -5,12 +5,12 @@
    caminho depois. -->
 
 <container class="tela">
-  <column class="coluna" width="fill" height="fill" spacing="14">
+  <column class="coluna cresce">
 
   <!-- ── cabeçalho ──────────────────────────────────────────────────── -->
-  <row width="fill" spacing="12" alignY="Center">
-    <column spacing="2" width="fill">
-    <text class="titulo" size="22" content="{obra_titulo}" />
+  <row class="linha">
+    <column class="dupla">
+    <text class="titulo-obra" content="{obra_titulo}" />
     <text class="nota" content="{obra_subtitulo}" />
     </column>
     <button
@@ -26,15 +26,15 @@
   </row>
 
   <!-- ── sem plano ainda ────────────────────────────────────────────── -->
-  <column class="painel-alto" spacing="10" if="{tem_obra}" notEquals="true">
+  <column class="painel-alto" if="{tem_obra}" notEquals="true">
     <text class="pergunta" content="Nada planejado ainda" />
     <text class="ajuda" content="Responda a entrevista e clique em Generate." />
     <button class="btn-primario" text="Ir para as perguntas" navigateTo="perguntas" />
   </column>
 
   <!-- ── painel de avanço ───────────────────────────────────────────── -->
-  <column class="painel" spacing="10" if="{tem_obra}" equals="true">
-    <row width="fill" spacing="12" alignY="Center">
+  <column class="painel" if="{tem_obra}" equals="true">
+    <row class="linha">
       <text
         class="contador"
         content="{prontos} / {total_tarefas} trechos"
@@ -49,51 +49,34 @@
         if="{tem_erros}"
         equals="true"
       />
-      <text
-        content=""
-        width="fill"
-      />
+      <text class="largo" content="" />
       <text
         class="ok"
         content="{rotulo_custo}"
       />
     </row>
-    <progressbar
-      value="pct"
-      min="0"
-      max="100"
-      width="fill"
-      height="8"
-      color="#A6E3A1"
-      background="#313244"
-      borderRadius="4"
-    />
-    <row width="fill" spacing="10" alignY="Center">
-      <spinner width="16" height="16" color="#A6E3A1" hidden="{parado}" />
-      <text class="corpo" content="{status}" width="fill" />
+    <progressbar class="progresso-verde" value="pct" min="0" max="100" />
+    <row class="linha">
+      <spinner class="spinner" hidden="{parado}" />
+      <text class="corpo largo" content="{status}" />
     </row>
   </column>
 
   <!-- ── os capítulos ───────────────────────────────────────────────── -->
   <scrollable
+    class="largo cresce"
     direction="vertical"
-    width="fill"
-    height="fill"
     if="{tem_obra}"
     equals="true"
   >
-  <column spacing="8" width="fill">
-    <row class="faixa" for-each="capitulos_ui" var="c" spacing="12" alignY="Center">
-    <text
-      class="contador"
-      content="{c.n}"
-      width="28"
-    />
-    <column spacing="2" width="fill">
+  <column class="lista">
+    <row class="faixa linha" for-each="capitulos_ui" var="c">
+    <text class="contador num" content="{c.n}" />
+    <column class="dupla">
       <text class="corpo" content="{c.titulo}" />
       <text class="nota" content="{c.detalhe}" />
     </column>
-    <text content="{c.marca}" size="13" color="{c.cor}" />
+    <text class="marca" content="{c.marca}" color="{c.cor}" />
     </row>
   </column>
   </scrollable>
@@ -103,7 +86,7 @@
   </container>
 
   <!-- ── ações ──────────────────────────────────────────────────────── -->
-  <row class="painel" spacing="12" alignY="Center" if="{tem_obra}" equals="true">
+  <row class="painel linha" if="{tem_obra}" equals="true">
     <button
       class="btn-gerar"
       text="{rotulo_produzir}"
@@ -136,7 +119,7 @@
       if="{pode_salvar}"
       equals="true"
     />
-    <text content="" width="fill" />
+    <text class="largo" content="" />
     <text class="nota" content="{obra_pasta}" />
   </row>
 

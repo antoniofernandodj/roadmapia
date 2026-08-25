@@ -5,12 +5,12 @@
    por escrito. -->
 
 <container class="tela">
-  <container width="fill" height="fill" alignX="Center">
-    <column class="coluna" width="760" height="fill">
+  <container class="centro cresce">
+    <column class="miolo cresce">
 
       <!-- ── cabeçalho: contexto + progresso ────────────────────────────── -->
-      <row width="fill" spacing="12" alignY="Center">
-        <column spacing="2" width="fill">
+      <row class="linha">
+        <column class="dupla">
           <text class="rotulo" content="{tipo_rotulo} · {assunto}" />
           <text
             class="nota"
@@ -24,32 +24,23 @@
         />
       </row>
 
-      <progressbar
-        value="progresso"
-        min="0"
-        max="100"
-        width="fill"
-        height="6"
-        color="#89B4FA"
-        background="#313244"
-        borderRadius="3"
-      />
+      <progressbar class="progresso" value="progresso" min="0" max="100" />
 
       <!-- ── a pergunta ─────────────────────────────────────────────────── -->
-      <column class="painel-alto" spacing="16" height="fill" if="{tem_perguntas}" equals="true">
+      <column class="painel-alto secao cresce" if="{tem_perguntas}" equals="true">
 
-        <column spacing="6" width="fill">
+        <column class="grupo">
           <text class="pergunta" content="{q_texto}" />
           <text class="ajuda" content="{q_ajuda}" />
         </column>
 
-        <scrollable direction="vertical" width="fill" height="fill">
-        <column spacing="16" width="fill">
+        <scrollable class="largo cresce" direction="vertical">
+        <column class="secao">
 
           <!-- Opções sugeridas pela IA. `cor` e o prefixo ✓/○ do rótulo são
             calculados no script — o estado de seleção mora nas respostas,
             não numa chave de contexto por opção. -->
-          <column spacing="8" width="fill" if="{tem_opcoes}" equals="true">
+          <column class="lista" if="{tem_opcoes}" equals="true">
             <text
               class="rotulo"
               content="SUGESTÕES — CLIQUE PARA MARCAR (PODE MAIS DE UMA)"
@@ -60,17 +51,16 @@
               var="o"
               text="{o.rotulo}" background="{o.cor}"
               on_click="alternar:{o.i}"
-              width="fill"
             />
           </column>
 
           <!-- ...e/ou a resposta em texto livre. -->
-          <column spacing="6" width="fill">
+          <column class="grupo">
             <text class="rotulo" content="OU RESPONDA COM SUAS PALAVRAS" />
             <textarea
-              class="campo"
+              class="campo campo-alto"
               placeholder="opcional — complementa as opções marcadas"
-              value="q_livre" onChange="livre_mudou" width="fill" height="110"
+              value="q_livre" on_change="livre_mudou"
             />
           </column>
 
@@ -78,7 +68,7 @@
         </scrollable>
 
         <!-- ── navegação entre perguntas ──────────────────────────────── -->
-        <row width="fill" spacing="10" alignY="Center">
+        <row class="linha">
           <button
             class="btn"
             text="← anterior"
@@ -106,20 +96,15 @@
             on_click="aprofundar"
             disabled="{ocupado}"
           />
-          <text content="" width="fill" />
-          <spinner
-            width="18"
-            height="18"
-            color="#A6E3A1"
-            hidden="{parado}"
-          />
+          <text class="largo" content="" />
+          <spinner class="spinner" hidden="{parado}" />
           <text class="corpo" content="{status}" />
         </row>
 
       </column>
 
       <!-- Sem perguntas na memória (entrou direto nesta tela). -->
-      <column class="painel-alto" spacing="10" if="{tem_perguntas}" notEquals="true">
+      <column class="painel-alto" if="{tem_perguntas}" notEquals="true">
         <text
           class="pergunta"
           content="Nenhuma entrevista em andamento"
@@ -140,8 +125,8 @@
       </container>
 
       <!-- ── gerar ──────────────────────────────────────────────────────── -->
-      <row class="painel" spacing="14" alignY="Center" if="{tem_perguntas}" equals="true">
-        <column spacing="2" width="fill">
+      <row class="painel linha" if="{tem_perguntas}" equals="true">
+        <column class="dupla">
           <text class="corpo" content="Pronto para gerar {tipo_artigo}?" />
           <text class="nota" content="{aviso_gerar}" />
         </column>

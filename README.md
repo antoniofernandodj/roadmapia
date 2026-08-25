@@ -142,9 +142,9 @@ e a contabilidade de custo, com `fetch` enlatado.
 | Arquivo | Papel |
 |---|---|
 | `src/main.rs` | casca fina: registra as telas, carrega o `.gss`, semeia a chave, e o `--check`. |
-| `ui/inicio.xml` · `.luau` | assunto, tipo, credenciais; a ação `refinar`. |
-| `ui/perguntas.xml` · `.luau` | a entrevista; `alternar`, `aprofundar` e `gerar` (fase 1). |
-| `ui/producao.xml` · `.luau` | o pool de workers (fase 2), avanço, custo, refazer falhas. |
+| `ui/inicio.gv` · `.luau` | assunto, tipo, credenciais; a ação `refinar`. |
+| `ui/perguntas.gv` · `.luau` | a entrevista; `alternar`, `aprofundar` e `gerar` (fase 1). |
+| `ui/producao.gv` · `.luau` | o pool de workers (fase 2), avanço, custo, refazer falhas. |
 | `ui/lib/openrouter.luau` | cliente da API, recorte de JSON, custo por chamada. |
 | `ui/lib/entrevista.luau` | perguntas/respostas e sua projeção para a tela. |
 | `ui/lib/obra.luau` | o plano multi-arquivo: fila, estados, caminhos, índices. |

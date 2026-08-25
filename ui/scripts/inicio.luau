@@ -58,7 +58,7 @@ function modelo_mudou(valor): ()
     refletir()
 end
 
---- `onToggle` de um dos três checkboxes. Vem como `escolher_tipo:<tipo>`, então
+--- `on_toggle` de um dos três checkboxes. Vem como `escolher_tipo:<tipo>`, então
 --- o motor entrega o sufixo como 1º argumento (e o booleano do check como 2º —
 --- ignorado de propósito: os três são um rádio, não caixas independentes, e
 --- desmarcar o tipo ativo deixaria o app sem tipo nenhum).

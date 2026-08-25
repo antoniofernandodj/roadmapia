@@ -1,35 +1,78 @@
-/* Paleta e classes compartilhadas pelas três telas.
-   Carregado por <link rel="stylesheet"> no topo de cada .xml — é global, então
-   basta uma vez, mas declarar nas três mantém cada tela abrível isolada. */
+/* Paleta e classes compartilhadas pelas quatro telas.
+   Carregado por `motor.load_stylesheet()` em `src/main.rs` — é global, então
+   nenhum `.gv` precisa declarar `<link rel="stylesheet">`.
+
+   Regra da casa: nada de geometria na markup. Largura, altura, espaçamento e
+   alinhamento moram aqui; o `.gv` só diz o que a coisa É (`class="painel"`,
+   `class="linha"`). Só sobra inline o que muda em tempo de execução — uma cor
+   vinda do script, um `{placeholder}`. */
 
 /* ── superfícies ─────────────────────────────────────────────────────── */
 
 .tela        { width: fill; height: fill; background: #11111B; padding: 28; }
 .coluna      { width: fill; spacing: 18; }
-.painel      { width: fill; padding: 20; background: #181825;
+/* A coluna central das telas de leitura: largura de linha confortável, em vez
+   de texto atravessando a janela inteira. */
+.miolo       { width: 720; spacing: 18; }
+.painel      { width: fill; padding: 20; spacing: 10; background: #181825;
                border-radius: 14; border-width: 1; border-color: #313244; }
-.painel-alto { width: fill; padding: 22; background: #1E1E2E;
+.painel-alto { width: fill; padding: 22; spacing: 10; background: #1E1E2E;
                border-radius: 16; border-width: 1; border-color: #45475A; }
 .faixa       { width: fill; padding: 12 16; background: #181825;
                border-radius: 10; border-width: 1; border-color: #313244; }
 
+/* ── arranjo ─────────────────────────────────────────────────────────── */
+
+/* O ritmo vertical, do mais apertado ao mais folgado. Escolha pelo quanto o
+   conteúdo deve se ler como uma coisa só, não pelo número: `.dupla` é o par
+   título+legenda, `.grupo` é rótulo+campo, `.lista` são itens repetidos,
+   `.bloco` são as partes de um painel, `.secao` são blocos independentes. */
+
+.dupla  { width: fill; spacing: 2; }
+.grupo  { width: fill; spacing: 6; }
+.lista  { width: fill; spacing: 8; }
+.bloco  { width: fill; spacing: 10; }
+.secao  { width: fill; spacing: 14; }
+
+/* Toda linha horizontal: ocupa a largura, centra os filhos no eixo Y e dá o
+   mesmo respiro entre eles. Um único espaçamento para todas — botões de ação,
+   cabeçalhos e barras de status ficam com o mesmo compasso. */
+.linha  { width: fill; spacing: 12; align-y: Center; }
+
+/* Utilitários de um eixo só, para combinarem em qualquer ordem. */
+.largo  { width: fill; }   /* também o vão vazio que empurra o resto da linha */
+.cresce { height: fill; }
+.centro { width: fill; align-x: Center; }
+
 /* ── tipografia ──────────────────────────────────────────────────────── */
 
-.titulo    { size: 28; bold: true; color: #F5E0DC; }
-.subtitulo { size: 13; color: #A6ADC8; }
-.rotulo    { size: 12; bold: true; color: #A6ADC8; }
-.pergunta  { size: 21; bold: true; color: #CDD6F4; }
-.ajuda     { size: 12; color: #7F849C; }
-.corpo     { size: 14; color: #CDD6F4; }
-.nota      { size: 12; color: #6C7086; }
-.erro      { size: 13; color: #F38BA8; }
-.ok        { size: 13; color: #A6E3A1; }
-.contador  { size: 12; bold: true; color: #89B4FA; }
+.titulo      { size: 28; bold: true; color: #F5E0DC; }
+/* Cabeçalho das telas internas: mesmo título, um tom abaixo, porque ali a obra
+   já é conhecida e o conteúdo é que importa. */
+.titulo-obra { size: 22; bold: true; color: #F5E0DC; }
+.subtitulo   { size: 13; color: #A6ADC8; }
+.rotulo      { size: 12; bold: true; color: #A6ADC8; }
+.pergunta    { size: 21; bold: true; color: #CDD6F4; }
+.ajuda       { size: 12; color: #7F849C; }
+.corpo       { size: 14; color: #CDD6F4; }
+.nota        { size: 12; color: #6C7086; }
+.erro        { size: 13; color: #F38BA8; }
+.ok          { size: 13; color: #A6E3A1; }
+.contador    { size: 12; bold: true; color: #89B4FA; }
+/* O número do capítulo numa lista: largura fixa para os títulos alinharem
+   quando a numeração passa de um dígito. */
+.num         { width: 28; }
+/* A marca de estado (✓/•/×) ao fim da linha do capítulo — a cor vem do script. */
+.marca       { size: 13; }
 
 /* ── controles ───────────────────────────────────────────────────────── */
 
 .campo         { width: fill; padding: 12; size: 14; }
 .campo:focus   { border-color: #89B4FA; }
+/* Alturas das áreas de texto: a resposta livre pede espaço para um parágrafo;
+   os resumos são de uma ou duas linhas. */
+.campo-alto    { height: 110; }
+.campo-resumo  { height: 60; }
 
 /* O padding VERTICAL é 12 em todas as variantes, e a altura é fixa: numa mesma
    Row, `.btn` ao lado de `.btn-primario` com paddings diferentes rendia botões
@@ -60,3 +103,12 @@
    partir do estado de seleção), então aqui ficam só forma e espaçamento. */
 .opcao        { width: fill; padding: 12 16; border-radius: 10; text-color: #CDD6F4; }
 .opcao:hover  { text-color: #FFFFFF; }
+
+/* ── indicadores ─────────────────────────────────────────────────────── */
+
+/* Spinner e barra de progresso têm sempre a mesma forma; só a cor muda, e ela
+   acompanha a ação ao lado — azul para refinar, verde para produzir. */
+.spinner         { width: 18; height: 18; color: #A6E3A1; }
+.spinner-azul    { width: 18; height: 18; color: #89B4FA; }
+.progresso       { width: fill; height: 8; border-radius: 4; background: #313244; color: #89B4FA; }
+.progresso-verde { width: fill; height: 8; border-radius: 4; background: #313244; color: #A6E3A1; }

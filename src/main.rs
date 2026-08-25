@@ -25,10 +25,10 @@ use std::path::PathBuf;
 
 /// As quatro telas, na ordem de registro. A primeira é a inicial.
 const TELAS: [(&str, &str); 4] = [
-    ("inicio", "inicio.xml"),
-    ("perguntas", "perguntas.xml"),
-    ("revisao", "revisao.xml"),
-    ("producao", "producao.xml"),
+    ("inicio", "inicio.gv"),
+    ("perguntas", "perguntas.gv"),
+    ("revisao", "revisao.gv"),
+    ("producao", "producao.gv"),
 ];
 
 /// Diretório que contém os templates (`ui/`).
@@ -139,7 +139,7 @@ fn checar() -> std::process::ExitCode {
 fn rodar_suites_luau() -> u8 {
     use glacier_ui::EngineMessage as M;
 
-    let suite = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/luau/suite.xml");
+    let suite = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/luau/suite.gv");
     let mut motor = GlacierUI::new();
     if let Err(e) = motor.register_component("suite", &suite.to_string_lossy()) {
         eprintln!("✗ suítes Luau: {e}");
