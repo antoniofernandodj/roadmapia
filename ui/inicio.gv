@@ -15,7 +15,11 @@
               content="Diga o assunto, responda algumas perguntas, receba o material."
             />
           </column>
-          <button class="btn-sutil" text="Retomar rascunho salvo" on_click="continuar_rascunho" />
+          <button
+            class="btn-sutil"
+            text="Retomar rascunho salvo"
+            on_click="continuar_rascunho"
+          />
         </row>
 
         <!-- ── 1. o assunto ───────────────────────────────────────────────── -->
