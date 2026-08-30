@@ -16,15 +16,41 @@ local L = require("lib/log")
 -- genérico. Aprofundar na tela seguinte adiciona mais.
 local PERGUNTAS_POR_RODADA = 6
 
+-- Migração do `storage` para o `.ini` — remover quando ninguém mais tiver a
+-- versão antiga instalada.
+--
+-- Até esta versão, a chave digitada na tela morava num JSON por componente em
+-- `.glacier-storage/`. Parar de lê-lo faria a chave "sumir" para quem já usava o
+-- app, que é o tipo de regressão que ninguém reporta como bug — reclama que o
+-- app esqueceu e digita de novo. Então lemos o valor velho UMA vez, para o
+-- contexto; o `on_message` do lado Rust o grava no `.ini` no primeiro despacho,
+-- e daí em diante a fonte é o arquivo.
+local function migrar_do_storage(): ()
+    if ctx.api_key == "" then
+        local antiga = storage.get("api_key")
+        if antiga ~= nil and antiga ~= "" then
+            ctx.api_key = antiga
+            ctx.api_key_origem = "ini"
+        end
+    end
+    if ctx.modelo == "" then
+        ctx.modelo = storage.get("modelo") or ""
+    end
+end
+
 function init(): ()
     ctx.modelos = json.encode(json.array(OR.MODELOS))
 
-    -- A chave pode ter vindo do ambiente (semeada pelo Rust). Só cai no
-    -- `storage` se não veio — assim a variável de ambiente sempre vence.
-    if ctx.api_key == nil or ctx.api_key == "" then
-        ctx.api_key = storage.get("api_key") or ""
+    -- A chave e o modelo chegam prontos do Rust, que já resolveu a precedência
+    -- entre o `.ini` e o ambiente (ver `semear_config` no main.rs). Daqui não
+    -- se lê configuração: só se escreve no contexto, e o `on_message` do lado
+    -- Rust persiste. O `or` cobre a tela rodando fora do daemon (o `--check`).
+    ctx.api_key = ctx.api_key or ""
+    ctx.modelo = ctx.modelo or ""
+    migrar_do_storage()
+    if ctx.modelo == "" then
+        ctx.modelo = OR.MODELO_PADRAO
     end
-    ctx.modelo = ctx.modelo or storage.get("modelo") or OR.MODELO_PADRAO
     ctx.assunto = ctx.assunto or ""
 
     if ctx.tipo == nil or ctx.tipo == "" then
@@ -45,16 +71,18 @@ function assunto_mudou(texto): ()
     E.erro(nil)
 end
 
+-- Digitar a chave a grava no `.ini`, que passa a vencer o ambiente — é a única
+-- forma de trocar de chave sem sair do app. Quem escreve é o Rust, no
+-- `on_message`; aqui basta o contexto.
 function chave_mudou(texto): ()
     ctx.api_key = texto
-    storage.set("api_key", texto)
+    ctx.api_key_origem = (texto ~= "") and "ini" or ""
     E.erro(nil)
     refletir()
 end
 
 function modelo_mudou(valor): ()
     ctx.modelo = valor
-    storage.set("modelo", valor)
     refletir()
 end
 
@@ -198,6 +226,21 @@ function refletir(): ()
     local chave = ctx.api_key or ""
     local estado_chave = (chave == "") and "sem chave" or ("chave ••••" .. chave:sub(-4))
     ctx.resumo_config = (ctx.modelo or OR.MODELO_PADRAO) .. "  ·  " .. estado_chave
+
+    -- De onde a chave veio. As duas origens são indistinguíveis no campo, e
+    -- descobrir "por que ele está usando a chave errada?" sem esta linha custa
+    -- caro. O caminho do arquivo entra inteiro: é o que a pessoa vai editar.
+    local origem = ctx.api_key_origem or ""
+    if origem == "ini" then
+        ctx.nota_chave = "Gravada em " .. (ctx.config_arquivo or "config.ini") .. "."
+    elseif origem == "ambiente" then
+        ctx.nota_chave = "Lida de OPENROUTER_API_KEY. Digitar aqui grava em "
+            .. (ctx.config_arquivo or "config.ini")
+            .. ", que passa a valer."
+    else
+        ctx.nota_chave = ""
+    end
+    ctx.tem_nota_chave = (ctx.nota_chave ~= "") and "true" or "false"
 end
 
 function on_error(msg)

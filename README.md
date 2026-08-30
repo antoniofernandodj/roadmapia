@@ -69,12 +69,45 @@ cortam isso em ~10×; o seletor está em "ajustes", na tela inicial.
 ## Rodar
 
 ```bash
-export OPENROUTER_API_KEY=sk-or-v1-...   # ou cole a chave em "ajustes", na tela inicial
 cargo run
 ```
 
-A chave do ambiente sempre vence a digitada. A digitada fica no `storage` local
-do componente; a do ambiente nunca encosta no disco.
+Cole a chave em "ajustes", na tela inicial — ela fica gravada no arquivo de
+configuração e o app abre com ela nas próximas vezes. Para uma sessão avulsa,
+sem escrever nada em disco:
+
+```bash
+export OPENROUTER_API_KEY=sk-or-v1-...
+```
+
+## Configuração
+
+Um `.ini`, procurado nesta ordem — o primeiro que **existir** vence:
+
+| | Caminho | Para quê |
+|---|---|---|
+| 1 | `$ROADMAPIA_CONFIG` | apontar para outro arquivo, ex.: testar uma segunda chave |
+| 2 | `./roadmapia.ini` | ao lado de onde o app rodou; é o de dev |
+| 3 | `~/.config/roadmapia/config.ini` | o normal (respeita `$XDG_CONFIG_HOME`) |
+
+```ini
+[openrouter]
+api_key = sk-or-v1-...
+modelo  = anthropic/claude-sonnet-4.5
+```
+
+**O arquivo vence `OPENROUTER_API_KEY`.** Escrever uma chave em disco é um ato
+deliberado; um `export` esquecido numa sessão antiga não deve sequestrá-la sem
+dizer nada. A tela inicial mostra, embaixo do campo, de onde veio a que está
+valendo — e digitar ali grava no arquivo, que passa a valer.
+
+O arquivo nasce `0600` (só o dono lê) e é editável à mão: gravar pela tela troca
+**a linha** daquela chave e deixa comentários, ordem e seções desconhecidas
+intactos. Nada é apagado por um campo vazio — para tirar uma chave, apague a
+linha.
+
+Quem já usava a versão anterior não perde nada: a chave que estava no `storage`
+do componente é lida uma última vez e migrada para o `.ini` no primeiro clique.
 
 ## A obra em disco
 
@@ -141,7 +174,8 @@ e a contabilidade de custo, com `fetch` enlatado.
 
 | Arquivo | Papel |
 |---|---|
-| `src/main.rs` | casca fina: registra as telas, carrega o `.gss`, semeia a chave, e o `--check`. |
+| `src/main.rs` | casca fina: registra as telas, carrega o `.gss`, liga a config ao contexto, e o `--check`. |
+| `src/config.rs` | o `.ini`: onde procurar, ler, e gravar uma chave sem estragar o resto. |
 | `ui/inicio.gv` · `scripts/inicio.luau` | assunto, tipo, credenciais; a ação `refinar`. |
 | `ui/perguntas.gv` · `scripts/perguntas.luau` | a entrevista; `alternar`, `aprofundar` e `gerar` (fase 1). |
 | `ui/revisao.gv` · `scripts/revisao.luau` | o esboço da IA antes de custar: editar, apagar, reordenar. |

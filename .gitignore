@@ -3,3 +3,4 @@
 *.json
 /ui/.glacier-storage
 /saidas/ultima-resposta-invalida.txt
+/roadmapia.ini

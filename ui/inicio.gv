@@ -99,10 +99,14 @@
                 />
               </column>
 
-              <column class="grupo" if="{api_key_do_ambiente}" not_equals="true">
+              <!-- O campo aparece SEMPRE, inclusive com a chave vindo do
+                   ambiente: como o `.ini` vence o ambiente, digitar aqui é a
+                   forma de trocar de chave sem sair do app. Quem diz de onde a
+                   que está valendo veio é a nota logo abaixo. -->
+              <column class="grupo">
                 <text
                   class="ajuda"
-                  content="Chave da API (fica guardada localmente)"
+                  content="Chave da API (fica guardada no arquivo de configuração)"
                 />
                 <input
                   class="campo"
@@ -112,8 +116,8 @@
                   secure="true"
                 />
               </column>
-              <text class="ok" content="Chave lida de OPENROUTER_API_KEY."
-                if="{api_key_do_ambiente}" equals="true" />
+              <text class="ok" content="{nota_chave}"
+                if="{tem_nota_chave}" equals="true" />
             </column>
 
             <text

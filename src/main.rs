@@ -16,12 +16,20 @@
 //!    paralelo, um arquivo por trecho, com avanço e custo real na tela.
 //!
 //! Este arquivo é uma casca fina de propósito: registra as telas, carrega os
-//! estilos e semeia a chave da API a partir do ambiente. Toda a lógica vive nos
-//! `.luau` de `ui/`, que o motor recarrega a quente — dá para reescrever um
-//! prompt ou um passo do fluxo com o app aberto, sem recompilar.
+//! estilos e liga a configuração (`config.rs`) ao contexto do motor nas duas
+//! direções — semeia a chave da API no arranque e persiste o que a tela mudar.
+//! Toda a lógica vive nos `.luau` de `ui/`, que o motor recarrega a quente — dá
+//! para reescrever um prompt ou um passo do fluxo com o app aberto, sem
+//! recompilar.
 
+mod config;
+
+use config::Config;
 use glacier_ui::{GlacierDaemon, GlacierUI, style};
 use std::path::PathBuf;
+
+/// A seção do `.ini` onde as credenciais e o modelo moram.
+const SECAO: &str = "openrouter";
 
 /// As quatro telas, na ordem de registro. A primeira é a inicial.
 const TELAS: [(&str, &str); 4] = [
@@ -62,16 +70,7 @@ fn registrar(motor: &mut GlacierUI) {
         eprintln!("estilos: {e}");
     }
 
-    // A chave pode vir do ambiente (o caminho preferido — não encosta no disco)
-    // ou ser digitada na tela inicial, onde o script a persiste via `storage`.
-    // Semeada aqui, ela vence a guardada: trocar de chave é `export` e reabrir.
-    match std::env::var("OPENROUTER_API_KEY") {
-        Ok(k) if !k.trim().is_empty() => {
-            motor.define_data("api_key", k.trim());
-            motor.define_data("api_key_do_ambiente", "true");
-        }
-        _ => motor.define_data("api_key_do_ambiente", "false"),
-    }
+    semear_config(motor);
 
     for (nome, arquivo) in TELAS {
         if let Err(e) = motor.register_component(nome, &ui(arquivo)) {
@@ -79,6 +78,79 @@ fn registrar(motor: &mut GlacierUI) {
         }
     }
     motor.set_initial_screen(TELAS[0].0);
+}
+
+/// Semeia `api_key` e `modelo` no contexto, na ordem de precedência.
+///
+/// **`.ini` > ambiente > nada.** O arquivo vence a variável porque escrever uma
+/// chave em disco é um ato deliberado, e um `export OPENROUTER_API_KEY`
+/// esquecido numa sessão antiga não deve sequestrá-la sem dizer nada. Quem quer
+/// o inverso apaga a linha do arquivo — ou aponta `$ROADMAPIA_CONFIG` para
+/// outro.
+///
+/// `api_key_origem` (`"ini"` / `"ambiente"` / `""`) e `config_arquivo` existem
+/// só para a tela poder DIZER de onde a chave veio: a diferença entre as duas
+/// origens é invisível no campo, e "por que ele está usando a chave errada?" é
+/// uma pergunta cara de responder sem essa linha na interface.
+fn semear_config(motor: &mut GlacierUI) {
+    let (cfg, erro) = Config::carregar();
+    if let Some(e) = erro {
+        eprintln!("config: não deu para ler {}: {e}", cfg.caminho().display());
+    }
+
+    let do_ambiente = std::env::var("OPENROUTER_API_KEY")
+        .ok()
+        .map(|k| k.trim().to_owned())
+        .filter(|k| !k.is_empty());
+
+    let (chave, origem) = match (cfg.get(SECAO, "api_key"), do_ambiente) {
+        (Some(k), _) => (k, "ini"),
+        (None, Some(k)) => (k, "ambiente"),
+        (None, None) => (String::new(), ""),
+    };
+    motor.define_data("api_key", &chave);
+    motor.define_data("api_key_origem", origem);
+    motor.define_data("config_arquivo", &cfg.caminho().display().to_string());
+
+    // O modelo não tem equivalente no ambiente: ou está no arquivo, ou o Luau
+    // aplica o padrão do `lib/openrouter`. Semear vazio aqui apagaria o padrão,
+    // então só definimos quando há valor.
+    if let Some(m) = cfg.get(SECAO, "modelo") {
+        motor.define_data("modelo", &m);
+    }
+}
+
+/// Persiste no `.ini` o que a tela mudou — o gancho de `on_message`, que o
+/// motor chama DEPOIS de cada despacho, com o estado já novo.
+///
+/// A camada Luau não tem I/O de arquivo além de `write_file`, e reescrever o
+/// `.ini` de lá significaria serializá-lo inteiro a cada tecla, perdendo os
+/// comentários de quem o editou à mão. Então o script só mexe no contexto e o
+/// dono do arquivo é este lado. `Config::set` não escreve quando o valor não
+/// mudou, então navegar entre telas não bate no disco.
+fn persistir_config(motor: &GlacierUI) {
+    let mut cfg = match Config::carregar() {
+        (cfg, None) => cfg,
+        (cfg, Some(e)) => {
+            eprintln!("config: não deu para ler {}: {e}", cfg.caminho().display());
+            return;
+        }
+    };
+    for chave in ["api_key", "modelo"] {
+        let Some(valor) = motor.get_data(chave) else {
+            continue;
+        };
+        // Contexto vazio não apaga o arquivo: um `ctx.api_key = ""` (a tela
+        // recém-aberta, um campo limpo sem querer) escreveria por cima de uma
+        // chave boa. Apagar é editar o arquivo.
+        if valor.is_empty() {
+            continue;
+        }
+        if let Err(e) = cfg.set(SECAO, chave, valor) {
+            eprintln!("config: não deu para gravar {}: {e}", cfg.caminho().display());
+            return;
+        }
+    }
 }
 
 /// `roadmapia --check`: registra tudo num motor descartável e sai com o número
@@ -114,6 +186,7 @@ fn checar() -> std::process::ExitCode {
 
     falhas += checar_binding_de_visibilidade(&mut motor);
     falhas += checar_alinhamento_dos_botoes(&mut motor);
+    falhas += checar_config_ini();
 
     falhas += rodar_suites_luau();
     falhas += simular_entrevista(&mut motor);
@@ -127,6 +200,195 @@ fn checar() -> std::process::ExitCode {
     } else {
         std::process::ExitCode::from(falhas)
     }
+}
+
+/// A precedência da configuração, e a promessa de que gravar não destrói.
+///
+/// São duas regras que só se veem quando quebram, e quebram caro: uma chave
+/// errada dá um 401 que parece problema da OpenRouter, e um arquivo reescrito
+/// perde os comentários de quem o editou — dano silencioso e irreversível.
+///
+/// Roda num `.ini` de mentira apontado por `$ROADMAPIA_CONFIG`, para nunca
+/// encostar na configuração real de quem rodar o `--check`.
+fn checar_config_ini() -> u8 {
+    let temp = std::env::temp_dir().join(format!("roadmapia-check-{}.ini", std::process::id()));
+    // O `--check` é uma thread só, do começo ao fim: nada mais está lendo o
+    // ambiente enquanto isto roda. Guardamos o que estava lá para devolver no
+    // fim — quem rodou o `--check` pode ter uma chave de verdade exportada, e
+    // este teste não tem o direito de tirá-la do processo.
+    let antes = ["ROADMAPIA_CONFIG", "OPENROUTER_API_KEY"].map(std::env::var_os);
+    unsafe {
+        std::env::set_var("ROADMAPIA_CONFIG", &temp);
+        std::env::set_var("OPENROUTER_API_KEY", "chave-do-ambiente");
+    }
+    let mut falhas = 0u8;
+    let mut dizer = |ok: bool, oque: &str| {
+        if !ok {
+            eprintln!("✗ config: {oque}");
+            falhas += 1;
+        }
+    };
+
+    // Sem arquivo, o ambiente é quem vale.
+    let _ = std::fs::remove_file(&temp);
+    let (cfg, _) = Config::carregar();
+    dizer(!cfg.existe(), "um arquivo apagado não devia aparecer como existente");
+    dizer(
+        cfg.get(SECAO, "api_key").is_none(),
+        "arquivo ausente devia dar chave nenhuma",
+    );
+
+    // Com arquivo, o arquivo vence o ambiente — a regra desta feature.
+    let original = "\
+# a chave do trabalho, expira em março
+[openrouter]
+api_key = chave-do-arquivo
+
+[outra_coisa]
+preservar = sim
+";
+    if let Err(e) = std::fs::write(&temp, original) {
+        eprintln!("✗ config: não deu para escrever o .ini de teste: {e}");
+        return 1;
+    }
+    let (mut cfg, erro) = Config::carregar();
+    if let Some(e) = erro {
+        eprintln!("✗ config: não deu para ler o .ini de teste: {e}");
+        return 1;
+    }
+    dizer(cfg.existe(), "o arquivo recém-escrito devia existir");
+    dizer(
+        cfg.get(SECAO, "api_key").as_deref() == Some("chave-do-arquivo"),
+        "o .ini não venceu OPENROUTER_API_KEY",
+    );
+    dizer(
+        cfg.get(SECAO, "modelo").is_none(),
+        "chave ausente na seção devia dar None",
+    );
+    dizer(
+        cfg.get("outra_coisa", "api_key").is_none(),
+        "achou `api_key` numa seção que não é a dela",
+    );
+
+    // Gravar troca A LINHA e deixa o resto — comentário, seção alheia, ordem.
+    if let Err(e) = cfg.set(SECAO, "api_key", "chave-nova") {
+        eprintln!("✗ config: não deu para gravar: {e}");
+        return falhas + 1;
+    }
+    if let Err(e) = cfg.set(SECAO, "modelo", "autor/modelo") {
+        eprintln!("✗ config: não deu para gravar o modelo: {e}");
+        return falhas + 1;
+    }
+    let depois = std::fs::read_to_string(&temp).unwrap_or_default();
+    dizer(
+        depois.contains("# a chave do trabalho, expira em março"),
+        "a reescrita comeu o comentário do usuário",
+    );
+    dizer(
+        depois.contains("[outra_coisa]") && depois.contains("preservar = sim"),
+        "a reescrita comeu uma seção que não é nossa",
+    );
+    dizer(
+        !depois.contains("chave-do-arquivo"),
+        "a chave velha continuou no arquivo depois de trocada",
+    );
+    dizer(
+        depois.matches("api_key").count() == 1,
+        "gravar duplicou a linha `api_key` em vez de substituí-la",
+    );
+    // O `modelo` é chave NOVA: tem de entrar na seção certa, não no fim do
+    // arquivo (onde cairia dentro de `[outra_coisa]` e sumiria da leitura).
+    let (cfg, _) = Config::carregar();
+    dizer(
+        cfg.get(SECAO, "modelo").as_deref() == Some("autor/modelo"),
+        "a chave nova não pousou na seção [openrouter]",
+    );
+    dizer(
+        cfg.get("outra_coisa", "preservar").as_deref() == Some("sim"),
+        "a seção alheia deixou de ser legível depois da escrita",
+    );
+
+    // E a regra vista de fora: o que o BOOT semeia no contexto. `Config` estar
+    // certo não basta — quem decide a precedência é o `semear_config`, e é o
+    // valor dele que a tela usa para chamar a API.
+    let mut motor = GlacierUI::new();
+    semear_config(&mut motor);
+    dizer(
+        motor.get_data("api_key").map(String::as_str) == Some("chave-nova"),
+        "o boot semeou a chave do ambiente com um .ini presente",
+    );
+    dizer(
+        motor.get_data("api_key_origem").map(String::as_str) == Some("ini"),
+        "a origem semeada não foi `ini`",
+    );
+    dizer(
+        motor.get_data("modelo").map(String::as_str) == Some("autor/modelo"),
+        "o modelo do .ini não chegou ao contexto",
+    );
+
+    // Sem arquivo, o ambiente volta a valer — e a tela tem de PODER dizer isso.
+    let _ = std::fs::remove_file(&temp);
+    let mut motor = GlacierUI::new();
+    semear_config(&mut motor);
+    dizer(
+        motor.get_data("api_key").map(String::as_str) == Some("chave-do-ambiente"),
+        "sem .ini, o ambiente devia valer",
+    );
+    dizer(
+        motor.get_data("api_key_origem").map(String::as_str) == Some("ambiente"),
+        "sem .ini, a origem devia ser `ambiente`",
+    );
+    dizer(
+        motor.get_data("modelo").is_none(),
+        "sem .ini, `modelo` devia ficar para o padrão do Luau",
+    );
+
+    // E o caminho de volta: o que o `on_message` grava. Um contexto com chave
+    // nova a persiste; um contexto VAZIO não apaga a que está lá — esta é a
+    // parte que, errada, destrói a configuração de alguém em silêncio.
+    let (mut cfg, _) = Config::carregar();
+    let _ = cfg.set(SECAO, "api_key", "antes-de-persistir");
+    let mut motor = GlacierUI::new();
+    motor.define_data("api_key", "digitada-na-tela");
+    persistir_config(&motor);
+    let (cfg, _) = Config::carregar();
+    dizer(
+        cfg.get(SECAO, "api_key").as_deref() == Some("digitada-na-tela"),
+        "o on_message não gravou a chave digitada",
+    );
+
+    let mut motor = GlacierUI::new();
+    motor.define_data("api_key", "");
+    persistir_config(&motor);
+    let (cfg, _) = Config::carregar();
+    dizer(
+        cfg.get(SECAO, "api_key").as_deref() == Some("digitada-na-tela"),
+        "um contexto vazio apagou a chave gravada",
+    );
+
+    // Um segredo não nasce legível para o grupo.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let (mut cfg, _) = Config::carregar();
+        let _ = cfg.set(SECAO, "api_key", "chave-de-permissao");
+        let modo = std::fs::metadata(&temp).ok().map(|m| m.permissions().mode() & 0o777);
+        dizer(modo == Some(0o600), "o .ini não ficou 0600");
+    }
+
+    let _ = std::fs::remove_file(&temp);
+    unsafe {
+        for (nome, valor) in ["ROADMAPIA_CONFIG", "OPENROUTER_API_KEY"].iter().zip(antes) {
+            match valor {
+                Some(v) => std::env::set_var(nome, v),
+                None => std::env::remove_var(nome),
+            }
+        }
+    }
+    if falhas == 0 {
+        println!("✓ config .ini (vence o ambiente, grava sem destruir, 0600)");
+    }
+    falhas
 }
 
 /// Roda as suítes Luau (`tests/luau/`) dentro do interpretador do motor.
@@ -758,6 +1020,7 @@ fn main() -> std::process::ExitCode {
         .title("roadmapia")
         .main_size(1040.0, 780.0)
         .main(registrar)
+        .on_message(|_, motor| persistir_config(motor))
         .run();
     match saida {
         Ok(()) => std::process::ExitCode::SUCCESS,
