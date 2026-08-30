@@ -1,0 +1,35 @@
+roadmapia — gera roadmaps, cursos e guias com IA (OpenRouter)
+
+COMO RODAR
+
+  Duplo-clique em roadmapia.exe. Não precisa instalar nada.
+
+  Mantenha a pasta 'ui' ao lado do .exe: os templates, os estilos e os
+  scripts são lidos enquanto o app roda. Sem ela a janela abre vazia.
+
+COMO INSTALAR (opcional)
+
+  Duplo-clique em instalar.bat. Ele copia o programa para
+  %LOCALAPPDATA%\Programs\roadmapia e cria um atalho no menu Iniciar.
+  Não pede senha de administrador.
+
+  Para remover: desinstalar.bat.
+
+A CHAVE DA API
+
+  Cole a chave da OpenRouter em "ajustes", na tela inicial. Ela fica
+  gravada em:
+
+      %APPDATA%\roadmapia\config.ini
+
+  que você também pode editar à mão:
+
+      [openrouter]
+      api_key = sk-or-v1-...
+      modelo  = anthropic/claude-sonnet-4.5
+
+  O arquivo vence a variável de ambiente OPENROUTER_API_KEY.
+
+ONDE AS OBRAS SÃO GRAVADAS
+
+  Numa pasta 'saidas', criada no diretório de onde o app foi aberto.

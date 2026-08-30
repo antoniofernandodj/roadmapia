@@ -13,13 +13,22 @@
 //! ## Onde
 //!
 //! Na leitura, o primeiro que **existir**; na escrita, esse mesmo (ou, se
-//! nenhum existe ainda, `$ROADMAPIA_CONFIG` se estiver setado, senão o XDG,
-//! criando os diretórios que faltarem):
+//! nenhum existe ainda, `$ROADMAPIA_CONFIG` se estiver setado, senão o do
+//! usuário, criando os diretórios que faltarem):
 //!
 //! 1. `$ROADMAPIA_CONFIG` — caminho explícito, para testar uma chave sem
 //!    encostar na de verdade.
 //! 2. `./roadmapia.ini` — ao lado de onde o app rodou; é o de dev.
-//! 3. `$XDG_CONFIG_HOME/roadmapia/config.ini`, ou `~/.config/roadmapia/config.ini`.
+//! 3. O diretório de configuração do usuário, que **depende do sistema**:
+//!
+//!    | | |
+//!    |---|---|
+//!    | Unix | `$XDG_CONFIG_HOME/roadmapia/config.ini`, ou `~/.config/roadmapia/config.ini` |
+//!    | Windows | `%APPDATA%\roadmapia\config.ini` (o Roaming do perfil) |
+//!
+//!    Não é o XDG no Windows de propósito: `~/.config` lá é um diretório que
+//!    nenhuma ferramenta do sistema conhece — nem o Explorer, nem o instalador,
+//!    nem o backup do perfil. `%APPDATA%` é onde um app Windows guarda config.
 //!
 //! ## Formato
 //!
@@ -54,6 +63,11 @@ pub struct Config {
     linhas: Vec<String>,
     /// `true` se o arquivo estava lá na hora de carregar.
     existia: bool,
+    /// O terminador de linha que o arquivo usava. Um `.ini` editado no Notepad
+    /// vem em CRLF, e reescrevê-lo em LF marcaria TODAS as linhas como
+    /// alteradas — num arquivo versionado, um diff inteiro para uma chave.
+    /// Arquivo novo nasce no terminador nativo do sistema.
+    fim_de_linha: &'static str,
 }
 
 impl Config {
@@ -71,6 +85,7 @@ impl Config {
             return match std::fs::read_to_string(&caminho) {
                 Ok(texto) => (
                     Self {
+                        fim_de_linha: if texto.contains("\r\n") { "\r\n" } else { "\n" },
                         destino: caminho,
                         linhas: texto.lines().map(str::to_owned).collect(),
                         existia: true,
@@ -81,11 +96,12 @@ impl Config {
             };
         }
         // Nenhum existe: o destino de escrita é o explícito, se houver, senão
-        // o XDG — nunca o `./roadmapia.ini`, que criaria um arquivo com
-        // segredo no diretório de trabalho de quem só abriu o app.
+        // o do usuário (`~/.config` ou `%APPDATA%`) — nunca o `./roadmapia.ini`,
+        // que criaria um arquivo com segredo no diretório de trabalho de quem só
+        // abriu o app.
         let destino = std::env::var_os("ROADMAPIA_CONFIG")
             .map(PathBuf::from)
-            .unwrap_or_else(caminho_xdg);
+            .unwrap_or_else(caminho_do_usuario);
         (Self::vazia(destino), None)
     }
 
@@ -94,6 +110,7 @@ impl Config {
             destino,
             linhas: Vec::new(),
             existia: false,
+            fim_de_linha: if cfg!(windows) { "\r\n" } else { "\n" },
         }
     }
 
@@ -179,16 +196,21 @@ impl Config {
 
     /// Escreve as linhas em disco, criando os diretórios que faltarem.
     ///
-    /// O arquivo guarda um segredo, então nasce `0600` (só o dono lê) em vez
-    /// do padrão do `umask`, que costuma deixar o grupo ler. Reaplicamos a
-    /// permissão a cada escrita: um arquivo criado à mão antes desta versão
-    /// pode estar aberto, e a próxima troca de chave pela tela o fecha.
+    /// No Unix o arquivo guarda um segredo, então nasce `0600` (só o dono lê)
+    /// em vez do padrão do `umask`, que costuma deixar o grupo ler. A permissão
+    /// é reaplicada a cada escrita: um arquivo criado à mão pode estar aberto, e
+    /// a próxima troca de chave pela tela o fecha.
+    ///
+    /// No Windows não há equivalente barato: a ACL do arquivo é herdada do
+    /// diretório, e `%APPDATA%` já concede só ao dono do perfil. Um `chmod` de
+    /// mentira (`set_readonly`) marcaria o arquivo como somente-leitura para
+    /// TODO mundo, inclusive para a próxima gravação — pioraria sem proteger.
     fn gravar(&self) -> io::Result<()> {
         if let Some(pai) = self.destino.parent() {
             std::fs::create_dir_all(pai)?;
         }
-        let mut texto = self.linhas.join("\n");
-        texto.push('\n');
+        let mut texto = self.linhas.join(self.fim_de_linha);
+        texto.push_str(self.fim_de_linha);
         std::fs::write(&self.destino, texto)?;
         #[cfg(unix)]
         {
@@ -207,20 +229,42 @@ fn candidatos() -> Vec<PathBuf> {
         v.push(PathBuf::from(p));
     }
     v.push(PathBuf::from("roadmapia.ini"));
-    v.push(caminho_xdg());
+    v.push(caminho_do_usuario());
     v
 }
 
-/// `$XDG_CONFIG_HOME/roadmapia/config.ini`, com o fallback do padrão XDG
-/// (`~/.config`). Sem `HOME`, cai num caminho relativo — melhor que entrar em
-/// pânico num app gráfico.
-fn caminho_xdg() -> PathBuf {
-    let base = std::env::var_os("XDG_CONFIG_HOME")
+/// O `config.ini` no diretório de configuração do usuário.
+///
+/// Nos dois sistemas o último recurso é um caminho RELATIVO em vez de um
+/// `panic`: um app gráfico que não abre porque não achou `%APPDATA%` é pior que
+/// um que abre e grava a config ao lado de si.
+fn caminho_do_usuario() -> PathBuf {
+    base_de_config().join("roadmapia").join("config.ini")
+}
+
+/// Unix: `$XDG_CONFIG_HOME`, senão `~/.config` (o padrão do XDG).
+#[cfg(unix)]
+fn base_de_config() -> PathBuf {
+    std::env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)
         .filter(|p| p.is_absolute())
         .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
-        .unwrap_or_else(|| PathBuf::from(".config"));
-    base.join("roadmapia").join("config.ini")
+        .unwrap_or_else(|| PathBuf::from(".config"))
+}
+
+/// Windows: `%APPDATA%` (o Roaming do perfil), com `%USERPROFILE%` como rede de
+/// segurança para os ambientes onde `APPDATA` não está no processo — serviço,
+/// shell enxuto, um CI.
+#[cfg(windows)]
+fn base_de_config() -> PathBuf {
+    std::env::var_os("APPDATA")
+        .map(PathBuf::from)
+        .filter(|p| p.is_absolute())
+        .or_else(|| {
+            std::env::var_os("USERPROFILE")
+                .map(|h| PathBuf::from(h).join("AppData").join("Roaming"))
+        })
+        .unwrap_or_else(|| PathBuf::from("."))
 }
 
 /// O que uma linha do `.ini` é.

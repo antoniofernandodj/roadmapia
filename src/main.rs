@@ -39,10 +39,20 @@ const TELAS: [(&str, &str); 4] = [
     ("producao", "producao.gv"),
 ];
 
-/// Diretório que contém os templates (`ui/`).
+/// Diretório que contém os templates (`ui/`), procurado nesta ordem:
 ///
-/// Procura, nesta ordem: `$ROADMAPIA_UI`, `./ui` (rodando da raiz do projeto) e
-/// o `ui/` ao lado do `Cargo.toml` (rodando de qualquer lugar, em dev).
+/// 1. `$ROADMAPIA_UI` — override explícito.
+/// 2. `./ui` — rodando da raiz do projeto.
+/// 3. `<dir do executável>/ui` — o **pacote portátil**: o .zip do Windows e o
+///    .tar.gz do Linux levam o `ui/` ao lado do binário. Não dá para depender
+///    do item 2 aqui: o duplo-clique no Explorer entra na pasta do .exe, mas um
+///    atalho no menu Iniciar pode ter qualquer "Iniciar em".
+/// 4. `<dir do executável>/../share/roadmapia/ui` — o layout FHS de um `.deb`:
+///    `/usr/bin/roadmapia` acha `/usr/share/roadmapia/ui`.
+/// 5. O `ui/` ao lado do `Cargo.toml` — dev, rodando de qualquer lugar. É o
+///    único que some no destino: `CARGO_MANIFEST_DIR` é o caminho da máquina
+///    que COMPILOU, então ele só existe aqui. Por isso os itens 3 e 4 —
+///    sem eles um pacote instalado abre sem tela nenhuma.
 fn ui_dir() -> PathBuf {
     if let Ok(d) = std::env::var("ROADMAPIA_UI") {
         return PathBuf::from(d);
@@ -50,6 +60,16 @@ fn ui_dir() -> PathBuf {
     let cwd = PathBuf::from("ui");
     if cwd.is_dir() {
         return cwd;
+    }
+    if let Some(base) = std::env::current_exe().ok().and_then(|e| e.parent().map(PathBuf::from)) {
+        let ao_lado = base.join("ui");
+        if ao_lado.is_dir() {
+            return ao_lado;
+        }
+        let fhs = base.join("..").join("share").join("roadmapia").join("ui");
+        if fhs.is_dir() {
+            return fhs;
+        }
     }
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ui")
 }
@@ -211,15 +231,39 @@ fn checar() -> std::process::ExitCode {
 /// Roda num `.ini` de mentira apontado por `$ROADMAPIA_CONFIG`, para nunca
 /// encostar na configuração real de quem rodar o `--check`.
 fn checar_config_ini() -> u8 {
-    let temp = std::env::temp_dir().join(format!("roadmapia-check-{}.ini", std::process::id()));
+    let base = std::env::temp_dir().join(format!("roadmapia-check-{}", std::process::id()));
+    let temp = base.join("config.ini");
+    let _ = std::fs::create_dir_all(&base);
+
     // O `--check` é uma thread só, do começo ao fim: nada mais está lendo o
     // ambiente enquanto isto roda. Guardamos o que estava lá para devolver no
     // fim — quem rodou o `--check` pode ter uma chave de verdade exportada, e
     // este teste não tem o direito de tirá-la do processo.
-    let antes = ["ROADMAPIA_CONFIG", "OPENROUTER_API_KEY"].map(std::env::var_os);
+    //
+    // `XDG_CONFIG_HOME`/`APPDATA` entram na lista porque são o TERCEIRO elo da
+    // cadeia de busca: sem apontá-los para um diretório vazio, a parte que
+    // testa "sem arquivo nenhum" acharia a configuração real de quem rodou o
+    // check e falharia sozinha na máquina errada.
+    const VARS: [&str; 4] = [
+        "ROADMAPIA_CONFIG",
+        "OPENROUTER_API_KEY",
+        "XDG_CONFIG_HOME",
+        "APPDATA",
+    ];
+    let antes = VARS.map(std::env::var_os);
     unsafe {
         std::env::set_var("ROADMAPIA_CONFIG", &temp);
         std::env::set_var("OPENROUTER_API_KEY", "chave-do-ambiente");
+        std::env::set_var("XDG_CONFIG_HOME", &base);
+        std::env::set_var("APPDATA", &base);
+    }
+
+    // O SEGUNDO elo é `./roadmapia.ini`, relativo ao diretório de trabalho, e é
+    // um arquivo legítimo de dev — não dá para apontá-lo para outro lugar. Se
+    // existir, as afirmações sobre "nenhum arquivo na cadeia" não se aplicam.
+    let tem_local = std::path::Path::new("roadmapia.ini").is_file();
+    if tem_local {
+        println!("  (./roadmapia.ini existe — pulando as checagens de ausência)");
     }
     let mut falhas = 0u8;
     let mut dizer = |ok: bool, oque: &str| {
@@ -229,14 +273,36 @@ fn checar_config_ini() -> u8 {
         }
     };
 
+    // A trava que faz este teste ser seguro em qualquer máquina.
+    //
+    // A cadeia de busca tem TRÊS entradas, e apagar o arquivo temporário faz o
+    // `carregar` cair para a seguinte — que, num desenvolvedor de verdade, é a
+    // configuração REAL dele. Uma versão anterior deste teste gravou
+    // `chave-de-permissao` por cima de `~/.config/roadmapia/config.ini`. Então
+    // nada aqui escreve sem antes provar que está escrevendo no descartável.
+    macro_rules! gravar {
+        ($cfg:expr, $chave:expr, $valor:expr) => {{
+            if $cfg.caminho() != temp.as_path() {
+                eprintln!(
+                    "✗ config: o teste ia gravar em {} em vez do temporário — abortado",
+                    $cfg.caminho().display()
+                );
+                return falhas + 1;
+            }
+            $cfg.set(SECAO, $chave, $valor)
+        }};
+    }
+
     // Sem arquivo, o ambiente é quem vale.
     let _ = std::fs::remove_file(&temp);
     let (cfg, _) = Config::carregar();
-    dizer(!cfg.existe(), "um arquivo apagado não devia aparecer como existente");
-    dizer(
-        cfg.get(SECAO, "api_key").is_none(),
-        "arquivo ausente devia dar chave nenhuma",
-    );
+    if !tem_local {
+        dizer(!cfg.existe(), "um arquivo apagado não devia aparecer como existente");
+        dizer(
+            cfg.get(SECAO, "api_key").is_none(),
+            "arquivo ausente devia dar chave nenhuma",
+        );
+    }
 
     // Com arquivo, o arquivo vence o ambiente — a regra desta feature.
     let original = "\
@@ -271,11 +337,11 @@ preservar = sim
     );
 
     // Gravar troca A LINHA e deixa o resto — comentário, seção alheia, ordem.
-    if let Err(e) = cfg.set(SECAO, "api_key", "chave-nova") {
+    if let Err(e) = gravar!(cfg, "api_key", "chave-nova") {
         eprintln!("✗ config: não deu para gravar: {e}");
         return falhas + 1;
     }
-    if let Err(e) = cfg.set(SECAO, "modelo", "autor/modelo") {
+    if let Err(e) = gravar!(cfg, "modelo", "autor/modelo") {
         eprintln!("✗ config: não deu para gravar o modelo: {e}");
         return falhas + 1;
     }
@@ -330,24 +396,26 @@ preservar = sim
     let _ = std::fs::remove_file(&temp);
     let mut motor = GlacierUI::new();
     semear_config(&mut motor);
-    dizer(
-        motor.get_data("api_key").map(String::as_str) == Some("chave-do-ambiente"),
-        "sem .ini, o ambiente devia valer",
-    );
-    dizer(
-        motor.get_data("api_key_origem").map(String::as_str) == Some("ambiente"),
-        "sem .ini, a origem devia ser `ambiente`",
-    );
-    dizer(
-        motor.get_data("modelo").is_none(),
-        "sem .ini, `modelo` devia ficar para o padrão do Luau",
-    );
+    if !tem_local {
+        dizer(
+            motor.get_data("api_key").map(String::as_str) == Some("chave-do-ambiente"),
+            "sem .ini, o ambiente devia valer",
+        );
+        dizer(
+            motor.get_data("api_key_origem").map(String::as_str) == Some("ambiente"),
+            "sem .ini, a origem devia ser `ambiente`",
+        );
+        dizer(
+            motor.get_data("modelo").is_none(),
+            "sem .ini, `modelo` devia ficar para o padrão do Luau",
+        );
+    }
 
     // E o caminho de volta: o que o `on_message` grava. Um contexto com chave
     // nova a persiste; um contexto VAZIO não apaga a que está lá — esta é a
     // parte que, errada, destrói a configuração de alguém em silêncio.
     let (mut cfg, _) = Config::carregar();
-    let _ = cfg.set(SECAO, "api_key", "antes-de-persistir");
+    let _ = gravar!(cfg, "api_key", "antes-de-persistir");
     let mut motor = GlacierUI::new();
     motor.define_data("api_key", "digitada-na-tela");
     persistir_config(&motor);
@@ -366,19 +434,22 @@ preservar = sim
         "um contexto vazio apagou a chave gravada",
     );
 
-    // Um segredo não nasce legível para o grupo.
+    // Um segredo não nasce legível para o grupo. O arquivo volta a existir
+    // antes desta parte: sem ele, `carregar` desceria a cadeia até a config
+    // real da máquina — ver a trava acima.
     #[cfg(unix)]
     {
+        let _ = std::fs::write(&temp, "[openrouter]\napi_key = a-trocar\n");
         use std::os::unix::fs::PermissionsExt;
         let (mut cfg, _) = Config::carregar();
-        let _ = cfg.set(SECAO, "api_key", "chave-de-permissao");
+        let _ = gravar!(cfg, "api_key", "chave-de-permissao");
         let modo = std::fs::metadata(&temp).ok().map(|m| m.permissions().mode() & 0o777);
         dizer(modo == Some(0o600), "o .ini não ficou 0600");
     }
 
-    let _ = std::fs::remove_file(&temp);
+    let _ = std::fs::remove_dir_all(&base);
     unsafe {
-        for (nome, valor) in ["ROADMAPIA_CONFIG", "OPENROUTER_API_KEY"].iter().zip(antes) {
+        for (nome, valor) in VARS.iter().zip(antes) {
             match valor {
                 Some(v) => std::env::set_var(nome, v),
                 None => std::env::remove_var(nome),

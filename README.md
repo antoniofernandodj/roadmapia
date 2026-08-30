@@ -109,6 +109,27 @@ linha.
 Quem já usava a versão anterior não perde nada: a chave que estava no `storage`
 do componente é lida uma última vez e migrada para o `.ini` no primeiro clique.
 
+## Compilar e empacotar
+
+`make help` lista tudo. Os que importam:
+
+| | |
+|---|---|
+| `make check` | templates, estilos, Luau e as simulações de fluxo |
+| `make windows-dist` | `.exe` + `ui/` + instalador num `.zip` (cross-compile via cargo-xwin) |
+| `make linux-dist` | binário + `ui/` + instalador num `.tar.gz` |
+| `make deb` | `.deb` com o `ui/` em `/usr/share/roadmapia` |
+| `make install` | compila, empacota e instala via `dpkg` |
+
+Todo alvo de pacote termina numa conferência que falha alto se o `ui/` não foi
+junto: o app lê os templates em runtime, então um pacote sem eles compila,
+instala e abre — numa janela vazia, na máquina de quem baixou.
+
+No Windows, o pacote traz `instalar.bat`: copia para
+`%LOCALAPPDATA%\Programs\roadmapia` e cria o atalho no menu Iniciar, sem pedir
+administrador. No Linux, `instalar.sh` instala em `~/.local` (ou `--sistema`
+para `/usr/local`).
+
 ## A obra em disco
 
 ```

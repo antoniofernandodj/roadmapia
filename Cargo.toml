@@ -1,7 +1,22 @@
 [package]
 name = "roadmapia"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
+description = "Gera roadmaps, cursos e guias a partir de um assunto, com uma entrevista conduzida por IA"
+license = "MIT"
 
 [dependencies]
 glacier-ui = { path = "../glacier-ui" }
+
+# O app lê `ui/` em runtime (é o que dá o hot-reload), então o pacote leva a
+# pasta junto — em `/usr/share/roadmapia/ui`, que é onde o `ui_dir()` procura a
+# partir de `/usr/bin/roadmapia`. Sem isto o .deb instala um binário que abre
+# uma janela vazia.
+[package.metadata.deb]
+section = "education"
+priority = "optional"
+assets = [
+    ["target/release/roadmapia", "usr/bin/", "755"],
+    ["ui/**/*", "usr/share/roadmapia/ui/", "644"],
+    ["packaging/linux/LEIA-ME.txt", "usr/share/doc/roadmapia/", "644"],
+]
