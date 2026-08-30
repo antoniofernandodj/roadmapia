@@ -22,12 +22,38 @@ local E = require("lib/entrevista")
 -- Formas que os prompts leem. Estruturais (só os campos usados) porque o
 -- `require` do glacier é uma global custom e o checker não consegue seguir os
 -- tipos exportados de outro módulo.
-type Obra = { titulo: string, resumo: string, publico: string }
+type Obra = { titulo: string, resumo: string, publico: string, observacoes: string? }
 type Capitulo = { titulo: string, resumo: string }
 type Sub = { titulo: string, foco: string }
 type Vizinhanca = { antes: string, depois: string }
 
 local P = {}
+
+--- O bloco das OBSERVAÇÕES GERAIS, escrito pela pessoa no fim da entrevista.
+---
+--- Entra nos três prompts (esboço, trecho, abertura) e é o mesmo texto nos
+--- três: é uma instrução sobre a obra INTEIRA, e valer só em alguns lugares
+--- produziria uma obra que muda de regra no meio. Vazio quando não há nada
+--- escrito — um cabeçalho "Observações:" seguido de nada é ruído que o modelo
+--- tenta interpretar.
+---
+--- Fica perto do FIM de cada prompt, logo antes da instrução de escrever, e
+--- não junto do cabeçalho: é a última coisa que o modelo lê antes de agir, e
+--- diz explicitamente que vence o resto — senão uma regra geral ("nada de
+--- código") perde para uma instrução específica do trecho três telas acima.
+local function observacoes(obra: Obra): { string }
+    local texto = obra.observacoes or ""
+    if texto == "" then
+        return {}
+    end
+    return {
+        "OBSERVAÇÕES DE QUEM PEDIU — valem para a obra inteira e para ESTE",
+        "trecho. Em caso de conflito com o que foi dito acima, elas vencem:",
+        "",
+        texto,
+        "",
+    }
+end
 
 -- ── fase 0: a entrevista ────────────────────────────────────────────────────
 
@@ -119,9 +145,13 @@ Princípios:
 ]]
 
 --- Fase 1: o plano da obra inteira. Uma chamada só — cabe, porque são títulos.
-function P.esboco(assunto: string, tipo: string?, transcricao: string, n_unidades: number, n_sub: number): string
+--- As `obs` são as observações gerais escritas no fim da entrevista. Elas
+--- chegam aqui, e não só nos trechos, porque um esboço cego a elas planejaria
+--- uma obra que cada trecho depois teria de contrariar sozinho — e "sem código"
+--- não conserta um capítulo que só existe para mostrar código.
+function P.esboco(assunto: string, tipo: string?, transcricao: string, n_unidades: number, n_sub: number, obs: string?): string
     local r = E.rotulo(tipo)
-    return table.concat({
+    local partes = {
         "Planeje " .. r.artigo .. " completo sobre:",
         "",
         assunto,
@@ -130,6 +160,13 @@ function P.esboco(assunto: string, tipo: string?, transcricao: string, n_unidade
         "",
         transcricao,
         "",
+    }
+
+    for _, linha in ipairs(observacoes({ titulo = "", resumo = "", publico = "", observacoes = obs })) do
+        table.insert(partes, linha)
+    end
+
+    local resto = {
         "Divida a obra em EXATAMENTE " .. tostring(n_unidades) .. " " .. r.unidades,
         "e cada " .. r.unidade .. " em EXATAMENTE " .. tostring(n_sub) .. " " .. r.subunidades .. ".",
         "",
@@ -161,7 +198,12 @@ function P.esboco(assunto: string, tipo: string?, transcricao: string, n_unidade
         "Nada além do JSON. Sem conteúdo didático aqui — só a arquitetura.",
         "Cada valor de texto ocupa UMA linha: quebra de linha dentro de aspas",
         "não é JSON válido e derruba a geração inteira.",
-    }, "\n")
+    }
+    for _, linha in ipairs(resto) do
+        table.insert(partes, linha)
+    end
+
+    return table.concat(partes, "\n")
 end
 
 -- ── fase 2: o conteúdo ──────────────────────────────────────────────────────
@@ -229,6 +271,10 @@ function P.secao(obra: Obra, capitulo: Capitulo, sub: Sub, ctx_vizinhos: Vizinha
         table.insert(partes, "")
     end
 
+    for _, linha in ipairs(observacoes(obra)) do
+        table.insert(partes, linha)
+    end
+
     table.insert(partes, "Escreva agora o trecho completo, começando por:")
     table.insert(partes, "## " .. sub.titulo)
     table.insert(partes, "")
@@ -253,7 +299,7 @@ end
 --- na falta dela, o foco planejado). É o que deixa a abertura amarrar o que
 --- foi ESCRITO, não só o que foi planejado.
 function P.abertura(obra: Obra, capitulo: Capitulo, trechos: string): string
-    return table.concat({
+    local partes = {
         "Obra: **" .. obra.titulo .. "** — " .. (obra.resumo or ""),
         "",
         "Escreva a ABERTURA do capítulo **" .. capitulo.titulo .. "**.",
@@ -262,6 +308,13 @@ function P.abertura(obra: Obra, capitulo: Capitulo, trechos: string): string
         "Os trechos deste capítulo, na ordem, e o que cada um cobre:",
         trechos,
         "",
+    }
+
+    for _, linha in ipairs(observacoes(obra)) do
+        table.insert(partes, linha)
+    end
+
+    local resto = {
         "Em 300 a 500 palavras: o problema que este capítulo resolve, por que ele",
         "vem nesta posição (o que o leitor precisava saber antes), e o fio que liga",
         "os trechos acima na ordem em que estão. Termine dizendo o que a pessoa",
@@ -269,7 +322,12 @@ function P.abertura(obra: Obra, capitulo: Capitulo, trechos: string): string
         "",
         "Comece direto no texto, sem título — o título já está no arquivo.",
         "NÃO resuma o conteúdo dos trechos; eles se explicam sozinhos.",
-    }, "\n")
+    }
+    for _, linha in ipairs(resto) do
+        table.insert(partes, linha)
+    end
+
+    return table.concat(partes, "\n")
 end
 
 return P

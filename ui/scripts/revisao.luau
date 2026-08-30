@@ -199,7 +199,11 @@ function confirmar(): ()
         return
     end
 
-    local plano, erro_montar = O.montar(e, ctx.esboco_slug_base or O.slug(ctx.assunto or "obra"))
+    local plano, erro_montar = O.montar(
+        e,
+        ctx.esboco_slug_base or O.slug(ctx.assunto or "obra"),
+        ctx.observacoes
+    )
     if plano == nil then
         E.erro(erro_montar)
         return

@@ -128,19 +128,43 @@
           <text class="erro" content="{erro}" />
         </container>
 
-        <!-- ── gerar ──────────────────────────────────────────────────────── -->
-        <row class="painel linha" if="{tem_perguntas}" equals="true">
-          <column class="dupla">
-            <text class="corpo" content="Pronto para gerar {tipo_artigo}?" />
-            <text class="nota" content="{aviso_gerar}" />
-          </column>
-          <button
-            class="btn-gerar"
-            text="Generate"
-            on_click="gerar"
-            disabled="{ocupado}"
+        <!-- ── observações gerais + gerar ─────────────────────────────────── -->
+        <column class="painel" if="{tem_perguntas}" equals="true">
+
+          <!-- O que a entrevista não pergunta. As perguntas são geradas pela IA
+            a partir do assunto, então elas cobrem o assunto — nunca o COMO:
+            tom, profundidade, o que evitar, em que linguagem os exemplos. Isto
+            entra nos três prompts (esboço, cada trecho e cada abertura), e é a
+            única coisa da tela que alcança as centenas de chamadas da produção.
+
+            Sem `on_change`: o motor já espelha o texto do editor no contexto
+            sozinho. Um handler que reescrevesse `ctx.observacoes` a cada tecla
+            recriaria o Content e o cursor pularia para o fim — o mesmo motivo
+            que está documentado no `livre_mudou`. -->
+          <text class="rotulo" content="OBSERVAÇÕES GERAIS SOBRE A OBRA (OPCIONAL)" />
+          <text
+            class="ajuda"
+            content="Valem para a obra inteira: tom, profundidade, o que evitar, que tecnologias usar nos exemplos."
           />
-        </row>
+          <textarea
+            class="campo campo-alto"
+            placeholder="ex.: exemplos sempre em Rust; nada de analogias com culinária; assuma que o leitor já programa."
+            value="observacoes"
+          />
+
+          <row class="linha">
+            <column class="dupla">
+              <text class="corpo" content="Pronto para gerar {tipo_artigo}?" />
+              <text class="nota" content="{aviso_gerar}" />
+            </column>
+            <button
+              class="btn-gerar"
+              text="Generate"
+              on_click="gerar"
+              disabled="{ocupado}"
+            />
+          </row>
+        </column>
 
       </column>
     </container>

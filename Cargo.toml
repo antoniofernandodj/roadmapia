@@ -1,6 +1,6 @@
 [package]
 name = "roadmapia"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 description = "Gera roadmaps, cursos e guias a partir de um assunto, com uma entrevista conduzida por IA"
 license = "MIT"

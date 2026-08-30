@@ -57,6 +57,13 @@ export type Plano = {
     titulo: string,
     resumo: string,
     publico: string,
+    -- As observações gerais escritas no fim da entrevista. Moram no PLANO, e
+    -- não no contexto, porque é o plano que sobrevive em disco (`obra_json`):
+    -- retomar uma produção interrompida, ou refazer as falhas dias depois, tem
+    -- de usar as mesmas observações da primeira metade da obra. No contexto
+    -- elas se perderiam ao reabrir o app, e a segunda metade sairia com outra
+    -- regra que a primeira.
+    observacoes: string,
     pasta: string,
     capitulos: { Capitulo },
 }
@@ -110,7 +117,7 @@ end
 --- Normaliza o esboço cru do modelo num plano com estado, caminhos de arquivo
 --- e nada de campo faltando. Descarta capítulos/trechos irrecuperáveis em vez
 --- de deixar a produção quebrar no meio.
-function O.montar(esboco: any, slug_base: string): (Plano?, string?)
+function O.montar(esboco: any, slug_base: string, observacoes: string?): (Plano?, string?)
     if type(esboco) ~= "table" or type(esboco.capitulos) ~= "table" then
         return nil, "O modelo não devolveu um esboço com capítulos."
     end
@@ -120,6 +127,9 @@ function O.montar(esboco: any, slug_base: string): (Plano?, string?)
         titulo = tostring(esboco.titulo or slug_base),
         resumo = tostring(esboco.resumo or ""),
         publico = tostring(esboco.publico or ""),
+        -- Não vem do esboço: o modelo não as inventa, quem escreveu foi a
+        -- pessoa. Chegam por parâmetro de quem confirma o plano.
+        observacoes = observacoes or "",
         pasta = pasta,
         capitulos = json.array({}),
     }

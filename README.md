@@ -109,6 +109,23 @@ linha.
 Quem já usava a versão anterior não perde nada: a chave que estava no `storage`
 do componente é lida uma última vez e migrada para o `.ini` no primeiro clique.
 
+## Observações gerais
+
+No fim da entrevista há uma textarea livre: tom, profundidade, o que evitar, em
+que linguagem os exemplos. A entrevista é gerada pela IA a partir do assunto,
+então ela cobre o **assunto** — nunca o *como*, e era o que faltava.
+
+O texto entra nos **três** prompts: no esboço, em cada trecho e em cada abertura
+de capítulo. No esboço porque um plano cego a elas montaria uma obra que cada
+trecho depois teria de contrariar sozinho — "sem código" não conserta um
+capítulo que só existe para mostrar código. E o bloco diz explicitamente que
+**vence** em caso de conflito, senão uma regra geral perde para a instrução
+específica do trecho, escrita logo acima dela.
+
+Elas moram no **plano** (`obra_json`), não no contexto: retomar uma produção
+interrompida dias depois tem de usar as mesmas observações da primeira metade,
+e o contexto se perde ao fechar o app.
+
 ## Compilar e empacotar
 
 `make help` lista tudo. Os que importam:
@@ -198,7 +215,7 @@ e a contabilidade de custo, com `fetch` enlatado.
 | `src/main.rs` | casca fina: registra as telas, carrega o `.gss`, liga a config ao contexto, e o `--check`. |
 | `src/config.rs` | o `.ini`: onde procurar, ler, e gravar uma chave sem estragar o resto. |
 | `ui/inicio.gv` · `scripts/inicio.luau` | assunto, tipo, credenciais; a ação `refinar`. |
-| `ui/perguntas.gv` · `scripts/perguntas.luau` | a entrevista; `alternar`, `aprofundar` e `gerar` (fase 1). |
+| `ui/perguntas.gv` · `scripts/perguntas.luau` | a entrevista, as observações gerais, e `alternar`/`aprofundar`/`gerar` (fase 1). |
 | `ui/revisao.gv` · `scripts/revisao.luau` | o esboço da IA antes de custar: editar, apagar, reordenar. |
 | `ui/producao.gv` · `scripts/producao.luau` | o pool de workers (fase 2), avanço, custo, refazer falhas. |
 | `ui/scripts/lib/openrouter.luau` | cliente da API, recorte de JSON, custo por chamada. |

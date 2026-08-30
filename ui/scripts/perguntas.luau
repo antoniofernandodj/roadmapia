@@ -23,6 +23,10 @@ local SUBCAPITULOS = 20
 
 function init(): ()
     E.set_indice(E.indice())
+    -- Uma vez, no registro: a partir daqui quem mantém `ctx.observacoes` é o
+    -- próprio motor, que espelha o texto do <textarea> no contexto a cada
+    -- tecla. Escrever aqui de novo jogaria o cursor para o fim.
+    ctx.observacoes = ctx.observacoes or ""
     E.projetar()
     refletir()
 end
@@ -196,7 +200,8 @@ function gerar(): ()
         key = ctx.api_key,
         model = ctx.modelo,
         system = P.SISTEMA_ESBOCO,
-        user = P.esboco(ctx.assunto, ctx.tipo, E.transcricao(), CAPITULOS, SUBCAPITULOS),
+        user = P.esboco(ctx.assunto, ctx.tipo, E.transcricao(), CAPITULOS, SUBCAPITULOS,
+            ctx.observacoes),
         temperature = 0.5,
         -- O esboço inteiro (10 × 20 títulos + focos) é grande: sem teto folgado
         -- ele volta cortado, e um JSON cortado não decodifica.

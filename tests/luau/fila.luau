@@ -17,6 +17,7 @@
 -- explícita (`../`) é a forma de alcançar `ui/scripts/lib/` sem depender de
 -- `GLACIER_LUAU_PATH` (que exigiria mudar variável de ambiente do processo).
 local O = require("../../ui/scripts/lib/obra")
+local P = require("lib/prompts")  -- via GLACIER_LUAU_PATH; ver `rodar_suites_luau`
 
 local M = {}
 
@@ -87,6 +88,42 @@ function M.rodar()
     conferir(#p2.capitulos == 2, "montar descarta capítulo sem trechos e sem título")
     conferir(#p2.capitulos[2].subs == 1, "montar descarta trecho sem título")
     conferir(select(1, O.montar({}, "x")) == nil, "montar rejeita esboço sem capítulos")
+
+    -- ── 1b. as observações gerais chegam a TODA chamada paga ────────────────────
+    --
+    -- É a única coisa que a pessoa escreve uma vez e que precisa valer nas
+    -- centenas de chamadas da produção. Perdê-la no meio do caminho não daria
+    -- erro nenhum: a obra sairia inteira, cara, e ignorando o que foi pedido.
+    -- Por isso a checagem é no PROMPT, o texto que de fato é enviado — e não
+    -- em `plano.observacoes`, que provaria só que o campo existe.
+    local OBS = "exemplos sempre em Rust; nada de analogias com culinária"
+    local com_obs = assert(O.montar(esboco(2, 2), "obs", OBS))
+    conferir(com_obs.observacoes == OBS, "montar guarda as observações no plano")
+
+    local vizinhos = { antes = "", depois = "" }
+    local trecho = P.secao(com_obs, com_obs.capitulos[1], com_obs.capitulos[1].subs[1], vizinhos)
+    conferir(string.find(trecho, OBS, 1, true) ~= nil,
+        "as observações entram no prompt de cada trecho")
+    conferir(string.find(trecho, "elas vencem", 1, true) ~= nil,
+        "o prompt diz que as observações vencem em caso de conflito")
+
+    local abertura = P.abertura(com_obs, com_obs.capitulos[1], "- um trecho")
+    conferir(string.find(abertura, OBS, 1, true) ~= nil,
+        "as observações entram no prompt da abertura de capítulo")
+
+    local plano_esboco = P.esboco("assunto", "curso", "transcrição", 3, 4, OBS)
+    conferir(string.find(plano_esboco, OBS, 1, true) ~= nil,
+        "as observações entram no prompt do esboço")
+
+    -- Sem observações, nada de cabeçalho órfão: um "OBSERVAÇÕES:" seguido de
+    -- nada é ruído que o modelo tenta interpretar.
+    local sem_obs = assert(O.montar(esboco(1, 1), "sem-obs"))
+    conferir(sem_obs.observacoes == "", "sem observações, o plano guarda string vazia")
+    local trecho_sem = P.secao(sem_obs, sem_obs.capitulos[1], sem_obs.capitulos[1].subs[1], vizinhos)
+    conferir(string.find(trecho_sem, "OBSERVAÇÕES DE QUEM PEDIU", 1, true) == nil,
+        "sem observações, o bloco não aparece no prompt")
+    conferir(string.find(P.esboco("a", "curso", "t", 1, 1), "OBSERVAÇÕES DE QUEM PEDIU", 1, true) == nil,
+        "sem observações, o esboço também não ganha o bloco")
 
     -- ── 2. a fila, com workers intercalados ─────────────────────────────────────
 

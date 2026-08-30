@@ -473,13 +473,41 @@ fn rodar_suites_luau() -> u8 {
     use glacier_ui::EngineMessage as M;
 
     let suite = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/luau/suite.gv");
+
+    // As suítes vivem em `tests/luau/`, então é DALI que o `require` delas parte
+    // (o motor usa o diretório do script de entrada como raiz de módulos). Uma
+    // suíte que importa `lib/prompts` carrega o arquivo certo — mas o
+    // `require("lib/entrevista")` de DENTRO dele resolveria contra
+    // `tests/luau/lib/`, que não existe, e a suíte inteira falharia ao carregar.
+    //
+    // `GLACIER_LUAU_PATH` é a raiz extra que o motor consulta depois das suas.
+    // Com `ui/scripts` nela, uma suíte pode importar qualquer módulo do app
+    // pelo mesmo nome que o app usa — e as dependências internas deles também
+    // resolvem.
+    let antes = std::env::var_os("GLACIER_LUAU_PATH");
+    // SAFETY: o `--check` é uma thread só; nada mais lê o ambiente aqui.
+    unsafe {
+        std::env::set_var("GLACIER_LUAU_PATH", ui_dir().join("scripts"));
+    }
+    // A restauração acontece assim que as suítes rodam, e ANTES de qualquer
+    // `return`: um erro de registro é justamente o caminho em que a variável
+    // ficaria setada para o resto do `--check`.
     let mut motor = GlacierUI::new();
-    if let Err(e) = motor.register_component("suite", &suite.to_string_lossy()) {
+    let registro = motor.register_component("suite", &suite.to_string_lossy());
+    if registro.is_ok() {
+        motor.set_initial_screen("suite");
+        let _ = motor.dispatch(&M::UiClick("rodar".into()));
+    }
+    unsafe {
+        match antes {
+            Some(v) => std::env::set_var("GLACIER_LUAU_PATH", v),
+            None => std::env::remove_var("GLACIER_LUAU_PATH"),
+        }
+    }
+    if let Err(e) = registro {
         eprintln!("✗ suítes Luau: {e}");
         return 1;
     }
-    motor.set_initial_screen("suite");
-    let _ = motor.dispatch(&M::UiClick("rodar".into()));
 
     let saida = motor.get_data("teste_saida").cloned().unwrap_or_default();
     let falhas: u8 = motor
