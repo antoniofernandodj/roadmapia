@@ -61,9 +61,15 @@ declare function websocket(url: string, opts: { [string]: string }): Handle
 declare function after(ms: number, fn: any): Handle
 declare function every(ms: number, fn: any): Handle
 
--- Efeitos de UI. `confirm` suspende como o `fetch` e devolve a escolha.
+-- Efeitos de UI. `confirm` suspende como o `fetch` e devolve a escolha;
+-- `notify` sai da janela e vai para a bandeja de notificações do SO.
 declare function toast(opts: any): ()
+declare function notify(opts: any): ()
 declare function confirm(opts: any): boolean
+
+-- Acrescenta texto no FIM de um `<TextEditor>` sem reescrever o binding
+-- inteiro (que jogaria o cursor para o topo). Não suspende.
+declare function append_textarea(binding: string, texto: string): ()
 declare function navigate(tela: string): ()
 declare function navigate_back(): ()
 declare function viewport(): { width: number, height: number }

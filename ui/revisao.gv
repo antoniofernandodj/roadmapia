@@ -3,145 +3,148 @@
    de qualquer trecho ser escrito de verdade (e cobrado), dá para corrigir o
    que ela planejou — editar, apagar, reordenar, acrescentar. Só ao confirmar
    é que o plano vira uma fila de produção de verdade, na tela seguinte. -->
+<screen>
+  <resources>
+    <script src="scripts/revisao.luau"></script>
+  </resources>
 
-<container class="tela">
-  <column class="coluna cresce">
+  <container class="tela">
+    <column class="coluna cresce">
 
-  <!-- ── cabeçalho ──────────────────────────────────────────────────── -->
-  <row class="linha">
-    <column class="dupla">
-      <text class="titulo-obra" content="Revise o plano" />
-      <text class="nota" content="{rev_n_capitulos} capítulos — corrija antes de produzir" />
-    </column>
-    <button
-      class="btn-sutil"
-      text="← respostas"
-      navigate_to="perguntas"
-    />
-  </row>
-
-  <!-- ── sem esboço ainda ───────────────────────────────────────────── -->
-  <column class="painel-alto" if="{rev_tem_esboco}" not_equals="true">
-    <text class="pergunta" content="Nada planejado ainda" />
-    <text class="ajuda" content="Responda a entrevista e clique em Generate." />
-    <button class="btn-primario" text="Ir para as perguntas" navigate_to="perguntas" />
-  </column>
-
-  <column class="secao cresce" if="{rev_tem_esboco}" equals="true">
-
-    <!-- ── a obra ──────────────────────────────────────────────────── -->
-    <column class="painel">
-      <text class="rotulo" content="A OBRA" />
-      <input
-        class="campo"
-        placeholder="título"
-        value="rev_titulo"
-        on_change="titulo_obra_mudou"
-      />
-      <textarea
-        class="campo campo-resumo"
-        placeholder="resumo — o que a pessoa sabe fazer ao terminar"
-        value="rev_resumo"
-        on_change="resumo_obra_mudou"
-      />
-      <input
-        class="campo"
-        placeholder="público — de quem é este material"
-        value="rev_publico"
-        on_change="publico_obra_mudou"
-      />
-    </column>
-
-    <!-- ── os capítulos ────────────────────────────────────────────── -->
-    <scrollable class="largo cresce" direction="vertical">
-    <column class="bloco">
-
-      <column class="painel" for-each="rev_capitulos_ui" var="c">
-        <row class="linha">
-          <text class="contador num" content="{c.n}" />
-          <column class="dupla">
-            <text class="corpo" content="{c.titulo}" />
-            <text class="nota" content="{c.resumo}" />
-            <text class="nota" content="{c.n_subs} subcapítulos" />
-          </column>
-          <button class="btn-sutil" text="▲" on_click="mover_cima:{c.n}" />
-          <button class="btn-sutil" text="▼" on_click="mover_baixo:{c.n}" />
-          <button class="btn-sutil" text="editar" on_click="selecionar_capitulo:{c.n}" />
-          <button class="btn-sutil" text="excluir" on_click="excluir_capitulo:{c.n}" />
-        </row>
-
-        <!-- painel de edição — só para o capítulo selecionado -->
-        <column class="bloco" if="{c.selecionado}" equals="true">
-          <input
-            class="campo"
-            placeholder="título do capítulo"
-            value="rev_cap_titulo"
-            on_change="titulo_cap_mudou"
-          />
-          <textarea
-            class="campo campo-resumo"
-            placeholder="resumo — o papel dele na obra"
-            value="rev_cap_resumo"
-            on_change="resumo_cap_mudou"
-          />
-
-          <text class="rotulo" content="SUBCAPÍTULOS" />
-          <column class="lista">
-            <row class="linha" for-each="rev_subs_ui" var="s">
-              <input
-                class="campo"
-                placeholder="título do subcapítulo"
-                value="sub_titulo_{s.n}"
-                on_change="titulo_sub_mudou:{s.n}"
-              />
-              <input
-                class="campo"
-                placeholder="foco — o que este trecho deve ensinar"
-                value="sub_foco_{s.n}"
-                on_change="foco_sub_mudou:{s.n}"
-              />
-              <button class="btn-sutil" text="remover" on_click="excluir_sub:{s.n}" />
-            </row>
-          </column>
-
-          <row class="linha">
-            <button class="btn-sutil" text="+ adicionar subcapítulo" on_click="adicionar_sub" />
-            <text class="largo" content="" />
-            <button class="btn-sutil" text="fechar edição" on_click="fechar_edicao" />
-          </row>
-        </column>
+    <!-- ── cabeçalho ──────────────────────────────────────────────────── -->
+    <row class="linha">
+      <column class="dupla">
+        <text class="titulo-obra" content="Revise o plano" />
+        <text class="nota" content="{rev_n_capitulos} capítulos — corrija antes de produzir" />
       </column>
-
-      <button class="btn largo" text="+ adicionar capítulo" on_click="adicionar_capitulo" />
-
-    </column>
-    </scrollable>
-
-    <container class="faixa" if="{tem_erro}" equals="true">
-      <text class="erro" content="{erro}" />
-    </container>
-
-    <!-- ── ações ─────────────────────────────────────────────────────── -->
-    <row class="painel linha">
       <button
-        class="btn"
-        text="← gerar de novo"
-        on_click="gerar_de_novo"
-        disabled="{ocupado}"
-      />
-      <spinner class="spinner" hidden="{parado}" />
-      <text class="corpo largo" content="{status}" />
-      <button
-        class="btn-gerar"
-        text="Confirmar plano e produzir →"
-        on_click="confirmar"
-        disabled="{ocupado}"
+        class="btn-sutil"
+        text="← respostas"
+        navigate_to="perguntas"
       />
     </row>
 
-  </column>
+    <!-- ── sem esboço ainda ───────────────────────────────────────────── -->
+    <column class="painel-alto" if="{rev_tem_esboco}" not_equals="true">
+      <text class="pergunta" content="Nada planejado ainda" />
+      <text class="ajuda" content="Responda a entrevista e clique em Generate." />
+      <button class="btn-primario" text="Ir para as perguntas" navigate_to="perguntas" />
+    </column>
 
-  </column>
-</container>
+    <column class="secao cresce" if="{rev_tem_esboco}" equals="true">
 
-<script src="scripts/revisao.luau"></script>
+      <!-- ── a obra ──────────────────────────────────────────────────── -->
+      <column class="painel">
+        <text class="rotulo" content="A OBRA" />
+        <input
+          class="campo"
+          placeholder="título"
+          value="rev_titulo"
+          on_change="titulo_obra_mudou"
+        />
+        <textarea
+          class="campo campo-resumo"
+          placeholder="resumo — o que a pessoa sabe fazer ao terminar"
+          value="rev_resumo"
+          on_change="resumo_obra_mudou"
+        />
+        <input
+          class="campo"
+          placeholder="público — de quem é este material"
+          value="rev_publico"
+          on_change="publico_obra_mudou"
+        />
+      </column>
+
+      <!-- ── os capítulos ────────────────────────────────────────────── -->
+      <scrollable class="largo cresce" direction="vertical">
+      <column class="bloco">
+
+        <column class="painel" for-each="rev_capitulos_ui" var="c">
+          <row class="linha">
+            <text class="contador num" content="{c.n}" />
+            <column class="dupla">
+              <text class="corpo" content="{c.titulo}" />
+              <text class="nota" content="{c.resumo}" />
+              <text class="nota" content="{c.n_subs} subcapítulos" />
+            </column>
+            <button class="btn-sutil" text="▲" on_click="mover_cima:{c.n}" />
+            <button class="btn-sutil" text="▼" on_click="mover_baixo:{c.n}" />
+            <button class="btn-sutil" text="editar" on_click="selecionar_capitulo:{c.n}" />
+            <button class="btn-sutil" text="excluir" on_click="excluir_capitulo:{c.n}" />
+          </row>
+
+          <!-- painel de edição — só para o capítulo selecionado -->
+          <column class="bloco" if="{c.selecionado}" equals="true">
+            <input
+              class="campo"
+              placeholder="título do capítulo"
+              value="rev_cap_titulo"
+              on_change="titulo_cap_mudou"
+            />
+            <textarea
+              class="campo campo-resumo"
+              placeholder="resumo — o papel dele na obra"
+              value="rev_cap_resumo"
+              on_change="resumo_cap_mudou"
+            />
+
+            <text class="rotulo" content="SUBCAPÍTULOS" />
+            <column class="lista">
+              <row class="linha" for-each="rev_subs_ui" var="s">
+                <input
+                  class="campo"
+                  placeholder="título do subcapítulo"
+                  value="sub_titulo_{s.n}"
+                  on_change="titulo_sub_mudou:{s.n}"
+                />
+                <input
+                  class="campo"
+                  placeholder="foco — o que este trecho deve ensinar"
+                  value="sub_foco_{s.n}"
+                  on_change="foco_sub_mudou:{s.n}"
+                />
+                <button class="btn-sutil" text="remover" on_click="excluir_sub:{s.n}" />
+              </row>
+            </column>
+
+            <row class="linha">
+              <button class="btn-sutil" text="+ adicionar subcapítulo" on_click="adicionar_sub" />
+              <text class="largo" content="" />
+              <button class="btn-sutil" text="fechar edição" on_click="fechar_edicao" />
+            </row>
+          </column>
+        </column>
+
+        <button class="btn largo" text="+ adicionar capítulo" on_click="adicionar_capitulo" />
+
+      </column>
+      </scrollable>
+
+      <container class="faixa" if="{tem_erro}" equals="true">
+        <text class="erro" content="{erro}" />
+      </container>
+
+      <!-- ── ações ─────────────────────────────────────────────────────── -->
+      <row class="painel linha">
+        <button
+          class="btn"
+          text="← gerar de novo"
+          on_click="gerar_de_novo"
+          disabled="{ocupado}"
+        />
+        <spinner class="spinner" hidden="{parado}" />
+        <text class="corpo largo" content="{status}" />
+        <button
+          class="btn-gerar"
+          text="Confirmar plano e produzir →"
+          on_click="confirmar"
+          disabled="{ocupado}"
+        />
+      </row>
+
+    </column>
+
+    </column>
+  </container>
+</screen>

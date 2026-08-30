@@ -3,143 +3,146 @@
    seleção); logo abaixo, um campo livre para quem quer escrever a própria
    resposta. As duas coisas convivem: dá para marcar duas opções E completar
    por escrito. -->
+<screen>
+  <resources>
+    <script src="scripts/perguntas.luau"></script>
+  </resources>
 
-<container class="tela">
-  <container class="centro cresce">
-    <column class="miolo cresce">
+  <container class="tela">
+    <container class="centro cresce">
+      <column class="miolo cresce">
 
-      <!-- ── cabeçalho: contexto + progresso ────────────────────────────── -->
-      <row class="linha">
-        <column class="dupla">
-          <text class="rotulo" content="{tipo_rotulo} · {assunto}" />
-          <text
-            class="nota"
-            content="Pergunta {q_num} de {total_perguntas} · {respondidas} respondida(s)"
-          />
-        </column>
-        <button
-          class="btn-sutil"
-          text="← início"
-          navigate_to="inicio"
-        />
-      </row>
-
-      <progressbar class="progresso" value="progresso" min="0" max="100" />
-
-      <!-- ── a pergunta ─────────────────────────────────────────────────── -->
-      <column class="painel-alto secao cresce" if="{tem_perguntas}" equals="true">
-
-        <column class="grupo">
-          <text class="pergunta" content="{q_texto}" />
-          <text class="ajuda" content="{q_ajuda}" />
-        </column>
-
-        <scrollable class="largo cresce" direction="vertical">
-        <column class="secao">
-
-          <!-- Opções sugeridas pela IA. `cor` e o prefixo ✓/○ do rótulo são
-            calculados no script — o estado de seleção mora nas respostas,
-            não numa chave de contexto por opção. -->
-          <column class="lista" if="{tem_opcoes}" equals="true">
+        <!-- ── cabeçalho: contexto + progresso ────────────────────────────── -->
+        <row class="linha">
+          <column class="dupla">
+            <text class="rotulo" content="{tipo_rotulo} · {assunto}" />
             <text
-              class="rotulo"
-              content="SUGESTÕES — CLIQUE PARA MARCAR (PODE MAIS DE UMA)"
+              class="nota"
+              content="Pergunta {q_num} de {total_perguntas} · {respondidas} respondida(s)"
+            />
+          </column>
+          <button
+            class="btn-sutil"
+            text="← início"
+            navigate_to="inicio"
+          />
+        </row>
+
+        <progressbar class="progresso" value="progresso" min="0" max="100" />
+
+        <!-- ── a pergunta ─────────────────────────────────────────────────── -->
+        <column class="painel-alto secao cresce" if="{tem_perguntas}" equals="true">
+
+          <column class="grupo">
+            <text class="pergunta" content="{q_texto}" />
+            <text class="ajuda" content="{q_ajuda}" />
+          </column>
+
+          <scrollable class="largo cresce" direction="vertical">
+          <column class="secao">
+
+            <!-- Opções sugeridas pela IA. `cor` e o prefixo ✓/○ do rótulo são
+              calculados no script — o estado de seleção mora nas respostas,
+              não numa chave de contexto por opção. -->
+            <column class="lista" if="{tem_opcoes}" equals="true">
+              <text
+                class="rotulo"
+                content="SUGESTÕES — CLIQUE PARA MARCAR (PODE MAIS DE UMA)"
+              />
+              <button
+                class="opcao"
+                for-each="q_opcoes"
+                var="o"
+                text="{o.rotulo}" background="{o.cor}"
+                on_click="alternar:{o.i}"
+              />
+            </column>
+
+            <!-- ...e/ou a resposta em texto livre. -->
+            <column class="grupo">
+              <text class="rotulo" content="OU RESPONDA COM SUAS PALAVRAS" />
+              <textarea
+                class="campo campo-alto"
+                placeholder="opcional — complementa as opções marcadas"
+                value="q_livre" on_change="livre_mudou"
+              />
+            </column>
+
+          </column>
+          </scrollable>
+
+          <!-- ── navegação entre perguntas ──────────────────────────────── -->
+          <row class="linha">
+            <button
+              class="btn"
+              text="← anterior"
+              on_click="anterior"
+              disabled="{eh_primeira}"
+            />
+            <!-- Na última pergunta, "próxima" some (não há para onde ir) e dá
+              lugar a "concluir →", que salta para o fim da fila. Sem isso,
+              quem chegava ao fim ficava clicando em "próxima" sem efeito. -->
+            <button
+              class="btn-primario"
+              text="próxima →"
+              on_click="proxima"
+              hidden="{eh_ultima}"
             />
             <button
-              class="opcao"
-              for-each="q_opcoes"
-              var="o"
-              text="{o.rotulo}" background="{o.cor}"
-              on_click="alternar:{o.i}"
+              class="btn-primario"
+              text="concluir →"
+              on_click="concluir"
+              hidden="{ja_no_fim}"
             />
-          </column>
-
-          <!-- ...e/ou a resposta em texto livre. -->
-          <column class="grupo">
-            <text class="rotulo" content="OU RESPONDA COM SUAS PALAVRAS" />
-            <textarea
-              class="campo campo-alto"
-              placeholder="opcional — complementa as opções marcadas"
-              value="q_livre" on_change="livre_mudou"
+            <button
+              class="btn"
+              text="+ aprofundar"
+              on_click="aprofundar"
+              disabled="{ocupado}"
             />
-          </column>
+            <text class="largo" content="" />
+            <spinner class="spinner" hidden="{parado}" />
+            <text class="corpo" content="{status}" />
+          </row>
 
         </column>
-        </scrollable>
 
-        <!-- ── navegação entre perguntas ──────────────────────────────── -->
-        <row class="linha">
-          <button
-            class="btn"
-            text="← anterior"
-            on_click="anterior"
-            disabled="{eh_primeira}"
+        <!-- Sem perguntas na memória (entrou direto nesta tela). -->
+        <column class="painel-alto" if="{tem_perguntas}" not_equals="true">
+          <text
+            class="pergunta"
+            content="Nenhuma entrevista em andamento"
           />
-          <!-- Na última pergunta, "próxima" some (não há para onde ir) e dá
-            lugar a "concluir →", que salta para o fim da fila. Sem isso,
-            quem chegava ao fim ficava clicando em "próxima" sem efeito. -->
-          <button
-            class="btn-primario"
-            text="próxima →"
-            on_click="proxima"
-            hidden="{eh_ultima}"
+          <text
+            class="ajuda"
+            content="Volte ao início, diga o assunto e clique em Refinar."
           />
           <button
             class="btn-primario"
-            text="concluir →"
-            on_click="concluir"
-            hidden="{ja_no_fim}"
+            text="Ir para o início"
+            navigate_to="inicio"
           />
+        </column>
+
+        <container class="faixa" if="{tem_erro}" equals="true">
+          <text class="erro" content="{erro}" />
+        </container>
+
+        <!-- ── gerar ──────────────────────────────────────────────────────── -->
+        <row class="painel linha" if="{tem_perguntas}" equals="true">
+          <column class="dupla">
+            <text class="corpo" content="Pronto para gerar {tipo_artigo}?" />
+            <text class="nota" content="{aviso_gerar}" />
+          </column>
           <button
-            class="btn"
-            text="+ aprofundar"
-            on_click="aprofundar"
+            class="btn-gerar"
+            text="Generate"
+            on_click="gerar"
             disabled="{ocupado}"
           />
-          <text class="largo" content="" />
-          <spinner class="spinner" hidden="{parado}" />
-          <text class="corpo" content="{status}" />
         </row>
 
       </column>
-
-      <!-- Sem perguntas na memória (entrou direto nesta tela). -->
-      <column class="painel-alto" if="{tem_perguntas}" not_equals="true">
-        <text
-          class="pergunta"
-          content="Nenhuma entrevista em andamento"
-        />
-        <text
-          class="ajuda"
-          content="Volte ao início, diga o assunto e clique em Refinar."
-        />
-        <button
-          class="btn-primario"
-          text="Ir para o início"
-          navigate_to="inicio"
-        />
-      </column>
-
-      <container class="faixa" if="{tem_erro}" equals="true">
-        <text class="erro" content="{erro}" />
-      </container>
-
-      <!-- ── gerar ──────────────────────────────────────────────────────── -->
-      <row class="painel linha" if="{tem_perguntas}" equals="true">
-        <column class="dupla">
-          <text class="corpo" content="Pronto para gerar {tipo_artigo}?" />
-          <text class="nota" content="{aviso_gerar}" />
-        </column>
-        <button
-          class="btn-gerar"
-          text="Generate"
-          on_click="gerar"
-          disabled="{ocupado}"
-        />
-      </row>
-
-    </column>
+    </container>
   </container>
-</container>
-
-<script src="scripts/perguntas.luau"></script>
+</screen>

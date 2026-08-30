@@ -1,150 +1,153 @@
 <!-- Tela 1 — o pedido bruto.
    O botão principal NÃO submete nada: ele leva o assunto para a IA e volta
    com um questionário sob medida, que é o que a tela `perguntas` consome. -->
+<screen>
+  <resources>
+    <script src="scripts/inicio.luau"></script>
+  </resources>
 
-<container class="tela">
-  <scrollable class="largo cresce" direction="vertical">
-    <container class="centro">
-      <column class="miolo">
+  <container class="tela">
+    <scrollable class="largo cresce" direction="vertical">
+      <container class="centro">
+        <column class="miolo">
 
-        <row class="linha">
-          <column class="dupla">
-            <text class="titulo" content="roadmapia" />
-            <text
-              class="subtitulo"
-              content="Diga o assunto, responda algumas perguntas, receba o material."
-            />
-          </column>
-          <button
-            class="btn-sutil"
-            text="Retomar rascunho salvo"
-            on_click="continuar_rascunho"
-          />
-        </row>
-
-        <!-- ── 1. o assunto ───────────────────────────────────────────────── -->
-        <column class="painel-alto">
-          <text class="rotulo" content="1 · SOBRE O QUE?" />
-          <input
-            class="campo"
-            placeholder="ex.: Rust para quem já programa em Python, com foco em CLIs"
-            value="assunto"
-            on_change="assunto_mudou"
-          />
-          <text
-            class="ajuda"
-            content="Quanto mais contexto aqui, mais afiadas as perguntas de refinamento."
-          />
-        </column>
-
-        <!-- ── 2. o tipo de artefato ──────────────────────────────────────── -->
-        <column class="painel">
-          <text class="rotulo" content="2 · O QUE GERAR?" />
-          <column class="bloco">
-            <checkbox
-              label="Roadmap — trilha por fases, com marcos e dependências"
-              checked="tipo_roadmap"
-              on_toggle="escolher_tipo:roadmap"
-            />
-            <checkbox
-              label="Curso — módulos, aulas, exercícios e avaliação"
-              checked="tipo_curso"
-              on_toggle="escolher_tipo:curso"
-            />
-            <checkbox
-              label="Guia — referência prática, direto ao ponto"
-              checked="tipo_guia"
-              on_toggle="escolher_tipo:guia"
-            />
-          </column>
-        </column>
-
-        <!-- ── 3. o modelo ────────────────────────────────────────────────── -->
-        <column class="painel">
           <row class="linha">
-            <text class="rotulo largo" content="3 · MODELO E CHAVE" />
+            <column class="dupla">
+              <text class="titulo" content="roadmapia" />
+              <text
+                class="subtitulo"
+                content="Diga o assunto, responda algumas perguntas, receba o material."
+              />
+            </column>
             <button
               class="btn-sutil"
-              text="{rotulo_avancado}"
-              on_click="alternar_avancado"
+              text="Retomar rascunho salvo"
+              on_click="continuar_rascunho"
             />
           </row>
 
-          <column class="bloco" if="{mostrar_avancado}">
-            <column class="grupo">
-              <text class="ajuda" content="Modelo (OpenRouter)" />
-              <select
-                class="campo"
-                options="modelos"
-                value="modelo"
-                on_change="modelo_mudou"
-                placeholder="escolha um modelo"
-              />
-            </column>
-
-            <column class="grupo">
-              <text
-                class="ajuda"
-                content="Ou um id qualquer do catálogo do OpenRouter"
-              />
-              <input
-                class="campo"
-                placeholder="autor/modelo"
-                value="modelo"
-                on_change="modelo_mudou"
-              />
-            </column>
-
-            <column class="grupo" if="{api_key_do_ambiente}" not_equals="true">
-              <text
-                class="ajuda"
-                content="Chave da API (fica guardada localmente)"
-              />
-              <input
-                class="campo"
-                placeholder="sk-or-v1-..."
-                value="api_key"
-                on_change="chave_mudou"
-                secure="true"
-              />
-            </column>
-            <text class="ok" content="Chave lida de OPENROUTER_API_KEY."
-              if="{api_key_do_ambiente}" equals="true" />
+          <!-- ── 1. o assunto ───────────────────────────────────────────────── -->
+          <column class="painel-alto">
+            <text class="rotulo" content="1 · SOBRE O QUE?" />
+            <input
+              class="campo"
+              placeholder="ex.: Rust para quem já programa em Python, com foco em CLIs"
+              value="assunto"
+              on_change="assunto_mudou"
+            />
+            <text
+              class="ajuda"
+              content="Quanto mais contexto aqui, mais afiadas as perguntas de refinamento."
+            />
           </column>
 
-          <text
-            class="nota"
-            content="{resumo_config}"
-            if="{mostrar_avancado}"
-            not_equals="true"
-          />
+          <!-- ── 2. o tipo de artefato ──────────────────────────────────────── -->
+          <column class="painel">
+            <text class="rotulo" content="2 · O QUE GERAR?" />
+            <column class="bloco">
+              <checkbox
+                label="Roadmap — trilha por fases, com marcos e dependências"
+                checked="tipo_roadmap"
+                on_toggle="escolher_tipo:roadmap"
+              />
+              <checkbox
+                label="Curso — módulos, aulas, exercícios e avaliação"
+                checked="tipo_curso"
+                on_toggle="escolher_tipo:curso"
+              />
+              <checkbox
+                label="Guia — referência prática, direto ao ponto"
+                checked="tipo_guia"
+                on_toggle="escolher_tipo:guia"
+              />
+            </column>
+          </column>
+
+          <!-- ── 3. o modelo ────────────────────────────────────────────────── -->
+          <column class="painel">
+            <row class="linha">
+              <text class="rotulo largo" content="3 · MODELO E CHAVE" />
+              <button
+                class="btn-sutil"
+                text="{rotulo_avancado}"
+                on_click="alternar_avancado"
+              />
+            </row>
+
+            <column class="bloco" if="{mostrar_avancado}">
+              <column class="grupo">
+                <text class="ajuda" content="Modelo (OpenRouter)" />
+                <select
+                  class="campo"
+                  options="modelos"
+                  value="modelo"
+                  on_change="modelo_mudou"
+                  placeholder="escolha um modelo"
+                />
+              </column>
+
+              <column class="grupo">
+                <text
+                  class="ajuda"
+                  content="Ou um id qualquer do catálogo do OpenRouter"
+                />
+                <input
+                  class="campo"
+                  placeholder="autor/modelo"
+                  value="modelo"
+                  on_change="modelo_mudou"
+                />
+              </column>
+
+              <column class="grupo" if="{api_key_do_ambiente}" not_equals="true">
+                <text
+                  class="ajuda"
+                  content="Chave da API (fica guardada localmente)"
+                />
+                <input
+                  class="campo"
+                  placeholder="sk-or-v1-..."
+                  value="api_key"
+                  on_change="chave_mudou"
+                  secure="true"
+                />
+              </column>
+              <text class="ok" content="Chave lida de OPENROUTER_API_KEY."
+                if="{api_key_do_ambiente}" equals="true" />
+            </column>
+
+            <text
+              class="nota"
+              content="{resumo_config}"
+              if="{mostrar_avancado}"
+              not_equals="true"
+            />
+          </column>
+
+          <!-- ── ação ───────────────────────────────────────────────────────── -->
+          <row class="linha">
+            <button
+              class="btn-primario"
+              text="Refinar com perguntas →"
+              on_click="refinar"
+              disabled="{ocupado}"
+            />
+            <button
+              class="btn"
+              text="Retomar entrevista"
+              navigate_to="perguntas"
+              hidden="{sem_perguntas}"
+            />
+            <spinner class="spinner-azul" hidden="{parado}" />
+            <text class="corpo largo" content="{status}" />
+          </row>
+
+          <container class="faixa" if="{tem_erro}" equals="true">
+            <text class="erro" content="{erro}" />
+          </container>
+
         </column>
-
-        <!-- ── ação ───────────────────────────────────────────────────────── -->
-        <row class="linha">
-          <button
-            class="btn-primario"
-            text="Refinar com perguntas →"
-            on_click="refinar"
-            disabled="{ocupado}"
-          />
-          <button
-            class="btn"
-            text="Retomar entrevista"
-            navigate_to="perguntas"
-            hidden="{sem_perguntas}"
-          />
-          <spinner class="spinner-azul" hidden="{parado}" />
-          <text class="corpo largo" content="{status}" />
-        </row>
-
-        <container class="faixa" if="{tem_erro}" equals="true">
-          <text class="erro" content="{erro}" />
-        </container>
-
-      </column>
-    </container>
-  </scrollable>
-</container>
-
-<script src="scripts/inicio.luau"></script>
+      </container>
+    </scrollable>
+  </container>
+</screen>

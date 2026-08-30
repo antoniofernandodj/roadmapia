@@ -3,127 +3,130 @@
    escreve em paralelo, um arquivo por trecho. A tela mostra o plano antes de
    começar (com a conta a pagar), o avanço durante, e o que ficou pelo
    caminho depois. -->
+<screen>
+  <resources>
+    <script src="scripts/producao.luau"></script>
+  </resources>
 
-<container class="tela">
-  <column class="coluna cresce">
+  <container class="tela">
+    <column class="coluna cresce">
 
-  <!-- ── cabeçalho ──────────────────────────────────────────────────── -->
-  <row class="linha">
-    <column class="dupla">
-    <text class="titulo-obra" content="{obra_titulo}" />
-    <text class="nota" content="{obra_subtitulo}" />
-    </column>
-    <button
-      class="btn-sutil"
-      text="← respostas"
-      navigate_to="perguntas"
-    />
-    <button
-      class="btn-sutil"
-      text="início"
-      navigate_to="inicio"
-    />
-  </row>
-
-  <!-- ── sem plano ainda ────────────────────────────────────────────── -->
-  <column class="painel-alto" if="{tem_obra}" not_equals="true">
-    <text class="pergunta" content="Nada planejado ainda" />
-    <text class="ajuda" content="Responda a entrevista e clique em Generate." />
-    <button class="btn-primario" text="Ir para as perguntas" navigate_to="perguntas" />
-  </column>
-
-  <!-- ── painel de avanço ───────────────────────────────────────────── -->
-  <column class="painel" if="{tem_obra}" equals="true">
+    <!-- ── cabeçalho ──────────────────────────────────────────────────── -->
     <row class="linha">
-      <text
-        class="contador"
-        content="{prontos} / {total_tarefas} trechos"
+      <column class="dupla">
+      <text class="titulo-obra" content="{obra_titulo}" />
+      <text class="nota" content="{obra_subtitulo}" />
+      </column>
+      <button
+        class="btn-sutil"
+        text="← respostas"
+        navigate_to="perguntas"
       />
-      <text
-        class="nota"
-        content="·  {n_capitulos} capítulos"
+      <button
+        class="btn-sutil"
+        text="início"
+        navigate_to="inicio"
       />
-      <text
-        class="nota"
-        content="·  {rotulo_erros}"
-        if="{tem_erros}"
+    </row>
+
+    <!-- ── sem plano ainda ────────────────────────────────────────────── -->
+    <column class="painel-alto" if="{tem_obra}" not_equals="true">
+      <text class="pergunta" content="Nada planejado ainda" />
+      <text class="ajuda" content="Responda a entrevista e clique em Generate." />
+      <button class="btn-primario" text="Ir para as perguntas" navigate_to="perguntas" />
+    </column>
+
+    <!-- ── painel de avanço ───────────────────────────────────────────── -->
+    <column class="painel" if="{tem_obra}" equals="true">
+      <row class="linha">
+        <text
+          class="contador"
+          content="{prontos} / {total_tarefas} trechos"
+        />
+        <text
+          class="nota"
+          content="·  {n_capitulos} capítulos"
+        />
+        <text
+          class="nota"
+          content="·  {rotulo_erros}"
+          if="{tem_erros}"
+          equals="true"
+        />
+        <text class="largo" content="" />
+        <text
+          class="ok"
+          content="{rotulo_custo}"
+        />
+      </row>
+      <progressbar class="progresso-verde" value="pct" min="0" max="100" />
+      <row class="linha">
+        <spinner class="spinner" hidden="{parado}" />
+        <text class="corpo largo" content="{status}" />
+      </row>
+    </column>
+
+    <!-- ── os capítulos ───────────────────────────────────────────────── -->
+    <scrollable
+      class="largo cresce"
+      direction="vertical"
+      if="{tem_obra}"
+      equals="true"
+    >
+    <column class="lista">
+      <row class="faixa linha" for-each="capitulos_ui" var="c">
+      <text class="contador num" content="{c.n}" />
+      <column class="dupla">
+        <text class="corpo" content="{c.titulo}" />
+        <text class="nota" content="{c.detalhe}" />
+      </column>
+      <text class="marca" content="{c.marca}" color="{c.cor}" />
+      </row>
+    </column>
+    </scrollable>
+
+    <container class="faixa" if="{tem_erro}" equals="true">
+      <text class="erro" content="{erro}" />
+    </container>
+
+    <!-- ── ações ──────────────────────────────────────────────────────── -->
+    <row class="painel linha" if="{tem_obra}" equals="true">
+      <button
+        class="btn-gerar"
+        text="{rotulo_produzir}"
+        on_click="produzir"
+        hidden="{produzindo}"
+        disabled="{nada_a_fazer}"
+      />
+      <button
+        class="btn"
+        text="Parar"
+        on_click="parar"
+        hidden="{parado}"
+      />
+      <button
+        class="btn"
+        text="Refazer falhas"
+        on_click="refazer_falhas"
+        hidden="{sem_falhas}"
+        disabled="{produzindo}"
+      />
+      <button
+        class="btn"
+        text="Copiar caminho"
+        on_click="clipboard:obra_pasta"
+      />
+      <button
+        class="btn"
+        text="Salvar obra"
+        on_click="salvar_obra"
+        if="{pode_salvar}"
         equals="true"
       />
       <text class="largo" content="" />
-      <text
-        class="ok"
-        content="{rotulo_custo}"
-      />
+      <text class="nota" content="{obra_pasta}" />
     </row>
-    <progressbar class="progresso-verde" value="pct" min="0" max="100" />
-    <row class="linha">
-      <spinner class="spinner" hidden="{parado}" />
-      <text class="corpo largo" content="{status}" />
-    </row>
-  </column>
 
-  <!-- ── os capítulos ───────────────────────────────────────────────── -->
-  <scrollable
-    class="largo cresce"
-    direction="vertical"
-    if="{tem_obra}"
-    equals="true"
-  >
-  <column class="lista">
-    <row class="faixa linha" for-each="capitulos_ui" var="c">
-    <text class="contador num" content="{c.n}" />
-    <column class="dupla">
-      <text class="corpo" content="{c.titulo}" />
-      <text class="nota" content="{c.detalhe}" />
     </column>
-    <text class="marca" content="{c.marca}" color="{c.cor}" />
-    </row>
-  </column>
-  </scrollable>
-
-  <container class="faixa" if="{tem_erro}" equals="true">
-    <text class="erro" content="{erro}" />
   </container>
-
-  <!-- ── ações ──────────────────────────────────────────────────────── -->
-  <row class="painel linha" if="{tem_obra}" equals="true">
-    <button
-      class="btn-gerar"
-      text="{rotulo_produzir}"
-      on_click="produzir"
-      hidden="{produzindo}"
-      disabled="{nada_a_fazer}"
-    />
-    <button
-      class="btn"
-      text="Parar"
-      on_click="parar"
-      hidden="{parado}"
-    />
-    <button
-      class="btn"
-      text="Refazer falhas"
-      on_click="refazer_falhas"
-      hidden="{sem_falhas}"
-      disabled="{produzindo}"
-    />
-    <button
-      class="btn"
-      text="Copiar caminho"
-      on_click="clipboard:obra_pasta"
-    />
-    <button
-      class="btn"
-      text="Salvar obra"
-      on_click="salvar_obra"
-      if="{pode_salvar}"
-      equals="true"
-    />
-    <text class="largo" content="" />
-    <text class="nota" content="{obra_pasta}" />
-  </row>
-
-  </column>
-</container>
-
-<script src="scripts/producao.luau"></script>
+</screen>
