@@ -1,0 +1,11 @@
+## Recapitulação e próximos passos
+
+Ao longo deste capítulo, exploramos os fundamentos do Wayland, desde seu surgimento como uma alternativa moderna ao X11 até sua adoção crescente no ecossistema Linux. Wayland introduz uma arquitetura direta onde os aplicativos gerenciam seus próprios buffers, enquanto o compositor coordena a exibição final, resultando em animações mais suaves e maior eficiência. Essa abordagem contrasta com o modelo centralizado do X11, onde o servidor X é responsável por toda a renderização.
+
+Discutimos as vantagens do Wayland, como a renderização direta, composição integrada e segurança aprimorada, que isolam os aplicativos e limitam o acesso cruzado a recursos. No entanto, também abordamos suas limitações, como a dependência de XWayland para compatibilidade com aplicativos legados e a necessidade de protocolos extras para funcionalidades específicas.
+
+Praticamente, você aprendeu a verificar o suporte ao Wayland no seu sistema usando comandos como `echo $XDG_SESSION_TYPE` e `ls /usr/share/wayland-sessions/`, além de configurar o ambiente com ferramentas como `weston` e `wayland-protocols`. Também vimos como depurar problemas comuns usando `WAYLAND_DEBUG` e como migrar gradualmente de X11 para Wayland ajustando variáveis de ambiente como `GDK_BACKEND` e `QT_QPA_PLATFORM`.
+
+No próximo capítulo, mergulharemos na arquitetura do Wayland, explorando em detalhes como os componentes como `wl_display`, `wl_registry` e `wl_compositor` interagem para criar a experiência gráfica moderna. Você entenderá como os protocolos core e estendidos funcionam, e como eles são negociados dinamicamente entre clientes e compositores. Além disso, veremos como configurar ambientes Wayland em diferentes distribuições Linux, garantindo que você tenha um ambiente funcional para desenvolvimento e testes.
+
+Prepare-se para aprofundar seus conhecimentos sobre o núcleo do Wayland, com exemplos práticos que vão desde a criação de superfícies básicas até a manipulação de eventos globais. Esses conhecimentos serão essenciais para o desenvolvimento de aplicativos nativos em Wayland, que abordaremos nos capítulos subsequentes.

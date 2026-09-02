@@ -1,0 +1,15 @@
+## Tendências no ecossistema Wayland
+
+O ecossistema Wayland está em constante evolução, impulsionado por novas demandas de hardware e software, além da necessidade de melhorar a segurança e a eficiência gráfica. Uma das tendências mais marcantes é o suporte a **HDR (High Dynamic Range)**, que exige mudanças profundas em toda a stack gráfica, desde o kernel até os toolkits de interface. Para que isso funcione, protocolos como `color-management` estão sendo desenvolvidos para permitir um controle preciso sobre a gama de cores e o brilho, essenciais para uma experiência HDR de qualidade.
+
+Outra tendência importante é a **melhoria na experiência HiDPI**, especialmente em monitores de alta resolução. O protocolo `fractional-scale` está sendo desenvolvido para permitir escalas fracionárias, o que evita problemas de renderização em telas onde o scaling inteiro não é suficiente. Por exemplo, em um monitor 4K com DPI alto, um scaling de 1.5x pode ser mais adequado do que 1x ou 2x. Sem esse protocolo, aplicativos podem aparecer muito pequenos ou muito grandes, comprometendo a usabilidade.
+
+A **segurança** também continua sendo uma prioridade no ecossistema Wayland. Protocolos como `xdg-activation` garantem que a ativação de janelas seja feita de forma segura, sem violar o modelo de segurança do Wayland. Isso é crucial em ambientes onde múltiplos aplicativos compartilham a mesma tela, como em sistemas de kiosk ou em ambientes corporativos. Além disso, o `shortcuts-inhibit` permite que aplicativos desativem temporariamente atalhos globais, o que é útil em aplicações de apresentação ou em jogos, onde atalhos podem interromper a experiência do usuário.
+
+A **latência** é outra área de foco, especialmente para aplicativos que exigem alta responsividade, como jogos e ferramentas de edição gráfica. O protocolo `tearing-control` permite que aplicativos controlem diretamente a sincronização vertical, reduzindo a latência e melhorando a fluidez da renderização. Isso é particularmente importante em cenários onde a sincronização vertical tradicional pode introduzir atrasos perceptíveis.
+
+Outra tendência emergente é o **suporte a métodos de entrada complexos**, como IMEs (Input Method Editors), que são essenciais para idiomas como chinês, japonês e coreano. O protocolo `input-method` está sendo aprimorado para oferecer uma experiência mais suave e integrada, permitindo que aplicativos lidem com métodos de entrada de forma eficiente, sem comprometer a segurança ou a usabilidade.
+
+Finalmente, a **personalização e precisão gráfica** estão recebendo atenção com protocolos como `cursor-shape`, que permite especificar o formato do cursor com maior precisão. Isso é útil em aplicativos que exigem diferentes tipos de cursores, como ferramentas de desenho ou ambientes virtuais.
+
+Essas tendências mostram que o Wayland está evoluindo para atender às necessidades modernas de hardware e software, mantendo sua filosofia de segurança e eficiência. À medida que esses protocolos se estabilizam, espera-se que mais aplicativos e ambientes gráficos adotem essas funcionalidades, consolidando o Wayland como o padrão gráfico dominante no Linux.
