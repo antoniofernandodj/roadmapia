@@ -584,7 +584,7 @@ fn checar_alinhamento_dos_botoes(motor: &mut GlacierUI) -> u8 {
             // encostam no topo. A armadilha que custou caro: `align="Center"`
             // não é alias de nada neste parser — é aceito e DESCARTADO em
             // silêncio, então a fila parecia centrada no código e não estava.
-            if !alturas.is_empty() && no.align_y.is_none() {
+            if !alturas.is_empty() && no.align_y().is_none() {
                 let quais: Vec<&str> = alturas.iter().map(|(t, _)| t.as_str()).collect();
                 problemas.push(format!(
                     "{tela}: Row com botões sem alignY (usar alignY=\"Center\", não align) — {:?}",

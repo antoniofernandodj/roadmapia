@@ -6,7 +6,7 @@ description = "Gera roadmaps, cursos e guias a partir de um assunto, com uma ent
 license = "MIT"
 
 [dependencies]
-glacier-ui = { path = "../glacier-ui" }
+glacier-ui = "0.75.0"
 
 # O app lê `ui/` em runtime (é o que dá o hot-reload), então o pacote leva a
 # pasta junto — em `/usr/share/roadmapia/ui`, que é onde o `ui_dir()` procura a
