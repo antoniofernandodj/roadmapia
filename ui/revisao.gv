@@ -14,8 +14,8 @@
     <!-- ── cabeçalho ──────────────────────────────────────────────────── -->
     <row class="linha">
       <column class="dupla">
-        <text class="titulo-obra" content="Revise o plano" />
-        <text class="nota" content="{rev_n_capitulos} capítulos — corrija antes de produzir" />
+        <text class="titulo-obra">Revise o plano</text>
+        <text class="nota">{rev_n_capitulos} capítulos — corrija antes de produzir</text>
       </column>
       <button
         class="btn-sutil"
@@ -26,8 +26,8 @@
 
     <!-- ── sem esboço ainda ───────────────────────────────────────────── -->
     <column class="painel-alto" if="{rev_tem_esboco}" not_equals="true">
-      <text class="pergunta" content="Nada planejado ainda" />
-      <text class="ajuda" content="Responda a entrevista e clique em Generate." />
+      <text class="pergunta">Nada planejado ainda</text>
+      <text class="ajuda">Responda a entrevista e clique em Generate.</text>
       <button class="btn-primario" text="Ir para as perguntas" navigate_to="perguntas" />
     </column>
 
@@ -35,7 +35,7 @@
 
       <!-- ── a obra ──────────────────────────────────────────────────── -->
       <column class="painel">
-        <text class="rotulo" content="A OBRA" />
+        <text class="rotulo">A OBRA</text>
         <input
           class="campo"
           placeholder="título"
@@ -62,11 +62,11 @@
 
         <column class="painel" for-each="rev_capitulos_ui" var="c">
           <row class="linha">
-            <text class="contador num" content="{c.n}" />
+            <text class="contador num">{c.n}</text>
             <column class="dupla">
-              <text class="corpo" content="{c.titulo}" />
-              <text class="nota" content="{c.resumo}" />
-              <text class="nota" content="{c.n_subs} subcapítulos" />
+              <text class="corpo">{c.titulo}</text>
+              <text class="nota">{c.resumo}</text>
+              <text class="nota">{c.n_subs} subcapítulos</text>
             </column>
             <button class="btn-sutil" text="▲" on_click="mover_cima:{c.n}" />
             <button class="btn-sutil" text="▼" on_click="mover_baixo:{c.n}" />
@@ -89,7 +89,7 @@
               on_change="resumo_cap_mudou"
             />
 
-            <text class="rotulo" content="SUBCAPÍTULOS" />
+            <text class="rotulo">SUBCAPÍTULOS</text>
             <column class="lista">
               <row class="linha" for-each="rev_subs_ui" var="s">
                 <input
@@ -122,7 +122,7 @@
       </scrollable>
 
       <container class="faixa" if="{tem_erro}" equals="true">
-        <text class="erro" content="{erro}" />
+        <text class="erro">{erro}</text>
       </container>
 
       <!-- ── ações ─────────────────────────────────────────────────────── -->
@@ -134,7 +134,7 @@
           disabled="{ocupado}"
         />
         <spinner class="spinner" hidden="{parado}" />
-        <text class="corpo largo" content="{status}" />
+        <text class="corpo largo">{status}</text>
         <button
           class="btn-gerar"
           text="Confirmar plano e produzir →"

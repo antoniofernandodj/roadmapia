@@ -14,8 +14,8 @@
     <!-- ── cabeçalho ──────────────────────────────────────────────────── -->
     <row class="linha">
       <column class="dupla">
-      <text class="titulo-obra" content="{obra_titulo}" />
-      <text class="nota" content="{obra_subtitulo}" />
+        <text class="titulo-obra" content="{obra_titulo}" />
+        <text class="nota" content="{obra_subtitulo}" />
       </column>
       <button
         class="btn-sutil"
@@ -31,38 +31,24 @@
 
     <!-- ── sem plano ainda ────────────────────────────────────────────── -->
     <column class="painel-alto" if="{tem_obra}" not_equals="true">
-      <text class="pergunta" content="Nada planejado ainda" />
-      <text class="ajuda" content="Responda a entrevista e clique em Generate." />
+      <text class="pergunta">Nada planejado ainda</text>
+      <text class="ajuda">Responda a entrevista e clique em Generate.</text>
       <button class="btn-primario" text="Ir para as perguntas" navigate_to="perguntas" />
     </column>
 
     <!-- ── painel de avanço ───────────────────────────────────────────── -->
     <column class="painel" if="{tem_obra}" equals="true">
       <row class="linha">
-        <text
-          class="contador"
-          content="{prontos} / {total_tarefas} trechos"
-        />
-        <text
-          class="nota"
-          content="·  {n_capitulos} capítulos"
-        />
-        <text
-          class="nota"
-          content="·  {rotulo_erros}"
-          if="{tem_erros}"
-          equals="true"
-        />
+        <text class="contador">{prontos} / {total_tarefas} trechos</text>
+        <text class="nota">·  {n_capitulos} capítulos</text>
+        <text class="nota" if="{tem_erros}" equals="true">·  {rotulo_erros}</text>
         <text class="largo" content="" />
-        <text
-          class="ok"
-          content="{rotulo_custo}"
-        />
+        <text class="ok">{rotulo_custo}</text>
       </row>
       <progressbar class="progresso-verde" value="pct" min="0" max="100" />
       <row class="linha">
         <spinner class="spinner" hidden="{parado}" />
-        <text class="corpo largo" content="{status}" />
+        <text class="corpo largo">{status}</text>
       </row>
     </column>
 
@@ -75,18 +61,18 @@
     >
     <column class="lista">
       <row class="faixa linha" for-each="capitulos_ui" var="c">
-      <text class="contador num" content="{c.n}" />
+      <text class="contador num">{c.n}</text>
       <column class="dupla">
-        <text class="corpo" content="{c.titulo}" />
-        <text class="nota" content="{c.detalhe}" />
+        <text class="corpo">{c.titulo}</text>
+        <text class="nota">{c.detalhe}</text>
       </column>
-      <text class="marca" content="{c.marca}" color="{c.cor}" />
+      <text class="marca" color="{c.cor}">{c.marca}</text>
       </row>
     </column>
     </scrollable>
 
     <container class="faixa" if="{tem_erro}" equals="true">
-      <text class="erro" content="{erro}" />
+      <text class="erro">{erro}</text>
     </container>
 
     <!-- ── ações ──────────────────────────────────────────────────────── -->
@@ -124,7 +110,7 @@
         equals="true"
       />
       <text class="largo" content="" />
-      <text class="nota" content="{obra_pasta}" />
+      <text class="nota">{obra_pasta}</text>
     </row>
 
     </column>

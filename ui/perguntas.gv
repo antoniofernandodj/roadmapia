@@ -15,11 +15,10 @@
         <!-- ── cabeçalho: contexto + progresso ────────────────────────────── -->
         <row class="linha">
           <column class="dupla">
-            <text class="rotulo" content="{tipo_rotulo} · {assunto}" />
-            <text
-              class="nota"
-              content="Pergunta {q_num} de {total_perguntas} · {respondidas} respondida(s)"
-            />
+            <text class="rotulo">{tipo_rotulo} · {assunto}</text>
+            <text class="nota">
+              Pergunta {q_num} de {total_perguntas} · {respondidas} respondida(s)
+            </text>
           </column>
           <button
             class="btn-sutil"
@@ -34,8 +33,8 @@
         <column class="painel-alto secao cresce" if="{tem_perguntas}" equals="true">
 
           <column class="grupo">
-            <text class="pergunta" content="{q_texto}" />
-            <text class="ajuda" content="{q_ajuda}" />
+            <text class="pergunta">{q_texto}</text>
+            <text class="ajuda">{q_ajuda}</text>
           </column>
 
           <scrollable class="largo cresce" direction="vertical">
@@ -45,10 +44,9 @@
               calculados no script — o estado de seleção mora nas respostas,
               não numa chave de contexto por opção. -->
             <column class="lista" if="{tem_opcoes}" equals="true">
-              <text
-                class="rotulo"
-                content="SUGESTÕES — CLIQUE PARA MARCAR (PODE MAIS DE UMA)"
-              />
+              <text class="rotulo">
+                SUGESTÕES — CLIQUE PARA MARCAR (PODE MAIS DE UMA)
+              </text>
               <button
                 class="opcao"
                 for-each="q_opcoes"
@@ -60,7 +58,7 @@
 
             <!-- ...e/ou a resposta em texto livre. -->
             <column class="grupo">
-              <text class="rotulo" content="OU RESPONDA COM SUAS PALAVRAS" />
+              <text class="rotulo">OU RESPONDA COM SUAS PALAVRAS</text>
               <textarea
                 class="campo campo-alto"
                 placeholder="opcional — complementa as opções marcadas"
@@ -102,21 +100,15 @@
             />
             <text class="largo" content="" />
             <spinner class="spinner" hidden="{parado}" />
-            <text class="corpo" content="{status}" />
+            <text class="corpo">{status}</text>
           </row>
 
         </column>
 
         <!-- Sem perguntas na memória (entrou direto nesta tela). -->
         <column class="painel-alto" if="{tem_perguntas}" not_equals="true">
-          <text
-            class="pergunta"
-            content="Nenhuma entrevista em andamento"
-          />
-          <text
-            class="ajuda"
-            content="Volte ao início, diga o assunto e clique em Refinar."
-          />
+          <text class="pergunta">Nenhuma entrevista em andamento</text>
+          <text class="ajuda">Volte ao início, diga o assunto e clique em Refinar.</text>
           <button
             class="btn-primario"
             text="Ir para o início"
@@ -141,11 +133,11 @@
             sozinho. Um handler que reescrevesse `ctx.observacoes` a cada tecla
             recriaria o Content e o cursor pularia para o fim — o mesmo motivo
             que está documentado no `livre_mudou`. -->
-          <text class="rotulo" content="OBSERVAÇÕES GERAIS SOBRE A OBRA (OPCIONAL)" />
-          <text
-            class="ajuda"
-            content="Valem para a obra inteira: tom, profundidade, o que evitar, que tecnologias usar nos exemplos."
-          />
+          <text class="rotulo">OBSERVAÇÕES GERAIS SOBRE A OBRA (OPCIONAL)</text>
+          <text class="ajuda">
+            Valem para a obra inteira: tom, profundidade, o que evitar,
+            que tecnologias usar nos exemplos.
+          </text>
           <textarea
             class="campo campo-alto"
             placeholder="ex.: exemplos sempre em Rust; nada de analogias com culinária; assuma que o leitor já programa."
@@ -154,8 +146,8 @@
 
           <row class="linha">
             <column class="dupla">
-              <text class="corpo" content="Pronto para gerar {tipo_artigo}?" />
-              <text class="nota" content="{aviso_gerar}" />
+              <text class="corpo">Pronto para gerar {tipo_artigo}?</text>
+              <text class="nota">{aviso_gerar}</text>
             </column>
             <button
               class="btn-gerar"

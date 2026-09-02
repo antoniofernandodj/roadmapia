@@ -13,11 +13,10 @@
 
           <row class="linha">
             <column class="dupla">
-              <text class="titulo" content="roadmapia" />
-              <text
-                class="subtitulo"
-                content="Diga o assunto, responda algumas perguntas, receba o material."
-              />
+              <text class="titulo">roadmapia</text>
+              <text class="subtitulo">
+                Diga o assunto, responda algumas perguntas, receba o material.
+              </text>
             </column>
             <button
               class="btn-sutil"
@@ -28,22 +27,23 @@
 
           <!-- ── 1. o assunto ───────────────────────────────────────────────── -->
           <column class="painel-alto">
-            <text class="rotulo" content="1 · SOBRE O QUE?" />
+            <text class="rotulo">
+              1 · SOBRE O QUE?
+            </text>
             <input
               class="campo"
               placeholder="ex.: Rust para quem já programa em Python, com foco em CLIs"
               value="assunto"
               on_change="assunto_mudou"
             />
-            <text
-              class="ajuda"
-              content="Quanto mais contexto aqui, mais afiadas as perguntas de refinamento."
-            />
+            <text class="ajuda">
+              Quanto mais contexto aqui, mais afiadas as perguntas de refinamento.
+            </text>
           </column>
 
           <!-- ── 2. o tipo de artefato ──────────────────────────────────────── -->
           <column class="painel">
-            <text class="rotulo" content="2 · O QUE GERAR?" />
+            <text class="rotulo">2 · O QUE GERAR?</text>
             <column class="bloco">
               <checkbox
                 label="Roadmap — trilha por fases, com marcos e dependências"
@@ -66,7 +66,7 @@
           <!-- ── 3. o modelo ────────────────────────────────────────────────── -->
           <column class="painel">
             <row class="linha">
-              <text class="rotulo largo" content="3 · MODELO E CHAVE" />
+              <text class="rotulo largo">3 · MODELO E CHAVE</text>
               <button
                 class="btn-sutil"
                 text="{rotulo_avancado}"
@@ -76,7 +76,7 @@
 
             <column class="bloco" if="{mostrar_avancado}">
               <column class="grupo">
-                <text class="ajuda" content="Modelo (OpenRouter)" />
+                <text class="ajuda">Modelo (OpenRouter)</text>
                 <select
                   class="campo"
                   options="modelos"
@@ -87,10 +87,7 @@
               </column>
 
               <column class="grupo">
-                <text
-                  class="ajuda"
-                  content="Ou um id qualquer do catálogo do OpenRouter"
-                />
+                <text class="ajuda">Ou um id qualquer do catálogo do OpenRouter</text>
                 <input
                   class="campo"
                   placeholder="autor/modelo"
@@ -104,10 +101,9 @@
                    forma de trocar de chave sem sair do app. Quem diz de onde a
                    que está valendo veio é a nota logo abaixo. -->
               <column class="grupo">
-                <text
-                  class="ajuda"
-                  content="Chave da API (fica guardada no arquivo de configuração)"
-                />
+                <text class="ajuda">
+                  Chave da API (fica guardada no arquivo de configuração)
+                </text>
                 <input
                   class="campo"
                   placeholder="sk-or-v1-..."
@@ -116,16 +112,12 @@
                   secure="true"
                 />
               </column>
-              <text class="ok" content="{nota_chave}"
-                if="{tem_nota_chave}" equals="true" />
+              <text class="ok" if="{tem_nota_chave}" equals="true">{nota_chave}</text>
             </column>
 
-            <text
-              class="nota"
-              content="{resumo_config}"
-              if="{mostrar_avancado}"
-              not_equals="true"
-            />
+            <text class="nota" if="{mostrar_avancado}" not_equals="true">
+              {resumo_config}
+            </text>
           </column>
 
           <!-- ── ação ───────────────────────────────────────────────────────── -->

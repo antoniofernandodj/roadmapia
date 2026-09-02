@@ -6,5 +6,5 @@
     <script src="suite.luau"></script>
   </resources>
 
-  <container padding="8"><text content="{teste_resumo}" /></container>
+  <container padding="8"><text>{teste_resumo}</text></container>
 </screen>
