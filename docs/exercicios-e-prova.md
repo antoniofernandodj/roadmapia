@@ -1,7 +1,8 @@
 # Exercícios e prova para o tipo "curso"
 
-**Estado:** planejamento. Nada implementado ainda — a implementação vai numa
-branch separada.
+**Estado:** **implementado** na branch `claude/course-exercises-tests-impl-153ncq`.
+Este documento continua sendo o plano — a §12 no fim registra onde a
+implementação se afastou dele, e por quê.
 
 Um curso sem exercício e sem avaliação é um livro com capa de curso. Hoje o app
 produz os dois primeiros terços do que a própria tela inicial promete —
@@ -552,3 +553,69 @@ Cada item é um commit que fecha com `cargo run -- --check` verde.
 Os passos 1–3 não mudam nada visível e são reversíveis sozinhos; os riscos reais
 (fila e custo) ficam todos cobertos por teste antes de a primeira chamada paga
 existir.
+
+---
+
+## 12. Onde a implementação se afastou deste plano
+
+Sete decisões estavam em aberto na §10. Todas foram tomadas como proposto,
+menos a dificuldade nenhuma que a #3 acabou dando: os quatro campos aparecem
+nas duas telas, e sem duplicar lógica, porque `lib/avaliacao.luau` é dono
+deles e as duas telas só o chamam.
+
+O resto são desvios que o código pediu, não escolhas de gosto:
+
+**A prova não espera a obra inteira.** O plano dizia que uma parte de prova só
+seria liberada quando todos os trechos da obra estivessem resolvidos. Ficou
+igual ao lote de exercícios: cada parte espera só **a faixa dela**. A parte 1,
+que cobre os trechos 1 a 50, não tem nada a ganhar esperando o trecho 200 —
+ela não vai perguntar sobre ele. Mais paralelismo, mesmo aterramento.
+
+**O recorte que vira prompt mora em `obra.luau`, não na tela.** `linhas_do_lote`
+e `linhas_da_prova` iam ficar em `producao.luau`. Um off-by-one ali não daria
+erro nenhum: o lote sairia escrito, cobrado, e cobrando um trecho que não é
+dele — ou deixando um sem exercício. Na tela a suíte não alcança; em
+`obra.luau`, ao lado de `O.vizinhanca` (que faz o mesmo tipo de projeção), ela
+alcança. Tem teste.
+
+**`O.CAPITULOS`/`O.SUBCAPITULOS` saíram das telas.** Não estava no plano. A
+tela inicial precisa da forma padrão da obra para estimar o custo antes de a
+obra existir, e isso faria uma **terceira** cópia de constantes que
+`perguntas.luau` e `revisao.luau` já duplicavam — com um comentário em
+`revisao.luau` avisando que divergir ali pediria "um esboço menor por engano".
+Foram para `lib/obra`.
+
+**A conta é recalculada por `R.projetar`, não por cada handler.** Acrescentar
+um subcapítulo na revisão muda o número de lotes. Amarrar o recálculo à
+projeção do esboço (mesmo padrão de `O.gravar_plano`) faz esquecer deixar de
+ser possível.
+
+**O `--check` ganhou uma simulação inteira, não só asserções.**
+`simular_exercicios_e_prova` cobre o painel aparecendo e sumindo com o tipo, o
+campo aceitando ficar vazio enquanto se digita, entrada inválida não derrubando
+a tela, e desmarcar um interruptor não desligando o outro.
+
+### Duas notas sobre os testes, que valem mais que o resto
+
+O teste da dependência (nenhum lote sai antes dos trechos que ele cobra) nasceu
+**vacuoso duas vezes**:
+
+1. ele checava a invariante chamando `O.faixa_resolvida` — a mesma função que a
+   fila usa para decidir. Arrancar a guarda passava despercebido: as duas
+   pontas concordavam em estar erradas. Agora olha os `status` crus.
+2. ele drenava a fila uma tarefa por vez, e assim nunca havia trecho em voo.
+   `O.tomar_tarefa` esvazia os trechos antes de olhar para os lotes, então a
+   guarda simplesmente nunca era consultada. Agora mantém 6 tarefas em voo,
+   como o pool real.
+
+As duas versões passavam com a guarda removida. A terceira falha — foi
+verificado assim, arrancando a guarda e vendo o teste acusar 6 tarefas fora de
+hora. Um teste de invariante que nunca foi visto falhando não é um teste.
+
+### Números finais
+
+| | |
+|---|---|
+| casos nas suítes Luau | 108 → **200** |
+| checagens do `--check` | 12 → **13** |
+| custo de um curso com exercícios e prova | +11,4% (US$ 17,64 → US$ 19,66) |

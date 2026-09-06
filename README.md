@@ -22,7 +22,9 @@ Interface em [glacier-ui](../glacier-ui) (XML declarativo + Luau), modelos via
 
 1. **`inicio`** — um campo para o assunto e três checkboxes (roadmap / curso /
    guia). O botão principal **não submete**: ele leva o assunto à IA e volta com
-   um questionário sob medida.
+   um questionário sob medida. Marcando **curso**, aparece um painel a mais:
+   quantos exercícios por capítulo e quantas questões na prova final (ver
+   [Exercícios e prova](#exercícios-e-prova)).
 2. **`perguntas`** — uma pergunta por vez. Cada uma traz opções sugeridas pela IA
    (chips clicáveis, **seleção múltipla**) **e** um campo de texto livre — os dois
    convivem: dá para marcar duas opções e completar por escrito.
@@ -53,7 +55,8 @@ O que impede 200 chamadas independentes de virarem 200 textos repetidos é a
 ## O custo, e por que ele aparece antes
 
 Material desse tamanho custa dinheiro de verdade: medido em Sonnet 4.5, deu
-**US$ 0,084 por trecho — cerca de US$ 17 pela obra completa**. Por isso
+**US$ 0,084 por trecho — cerca de US$ 17 pela obra completa** (US$ 20 num curso
+com exercícios e prova). Por isso
 "Produzir" não larga as 200 chamadas de cara:
 
 1. escreve **um trecho de amostra** e mede o custo real dele;
@@ -126,6 +129,47 @@ Elas moram no **plano** (`obra_json`), não no contexto: retomar uma produção
 interrompida dias depois tem de usar as mesmas observações da primeira metade,
 e o contexto se perde ao fechar o app.
 
+## Exercícios e prova
+
+Um curso sem exercício e sem avaliação é um livro com capa de curso. Marcando
+**curso** na tela inicial aparece um painel a mais: quantos exercícios por
+capítulo (padrão 10) e quantas questões na prova final (padrão 40). Os dois
+campos reaparecem na revisão, que é o último ponto antes de pagar — e o único
+em que o tamanho real da obra já é conhecido.
+
+O problema é o mesmo que separou o app em duas fases. Dez exercícios com
+solução comentada não cabem numa resposta só, então os dez saem em duas
+chamadas de cinco. Só que as duas correm ao mesmo tempo e nenhuma sabe o que a
+outra escreveu: mandando "escreva 5 exercícios sobre o capítulo 3" nas duas,
+ambas olham o capítulo inteiro, escolhem os assuntos mais óbvios dele e
+devolvem exercícios repetidos — dez pagos, seis distintos.
+
+A saída é dividir o capítulo entre elas:
+
+```
+Capítulo 3, 20 trechos:
+
+  trecho 1 ─────────────── 10 │ trecho 11 ─────────────── 20
+  └── lote 1: 5 exercícios ───┘ └── lote 2: 5 exercícios ──┘
+```
+
+Não é um pedido ("por favor não repita"), que o modelo pode ignorar: é
+impossibilidade — as duas chamadas estão olhando para material diferente. A
+prova é a mesma ideia um nível acima: 40 questões viram 4 chamadas de 10, cada
+uma sobre um quarto dos trechos **da obra**, cobrindo tudo de ponta a ponta sem
+buraco e sem repetição.
+
+Como cada pedaço é conhecido de antemão, o prompt recebe junto a **síntese** de
+cada trecho que ele cobre — o mesmo bloco `<!--SINTESE-->` que já alimenta a
+vizinhança. É o que faz o exercício cobrar o que foi **escrito**, e não o que
+estava no plano: se o trecho saiu diferente do planejado, o exercício
+acompanha. Pela mesma razão, um lote só é liberado depois que os trechos da
+faixa dele estão prontos, e nunca antes.
+
+Sai barato porque a unidade é o lote, não o exercício: 100 exercícios e 40
+questões cabem em 24 chamadas a mais, **cerca de +11%** sobre uma obra de 210.
+O painel diz esse número antes de qualquer coisa ser cobrada.
+
 ## Compilar e empacotar
 
 `make help` lista tudo. Os que importam:
@@ -155,8 +199,12 @@ saidas/<tipo>-<assunto>/
 ├── 01-<capitulo>/
 │   ├── README.md               abertura do capítulo + índice
 │   ├── 01-<trecho>.md
-│   └── …
-└── …
+│   ├── …
+│   └── exercicios-01.md        só em curso, se pedido
+├── …
+└── prova/                      só em curso, se pedida
+    ├── README.md               índice das partes (montado em código, sem API)
+    └── parte-01.md             questões + gabarito no fim
 ```
 
 Os arquivos aparecem conforme ficam prontos, então dá para começar a ler antes
@@ -192,7 +240,7 @@ cat /tmp/pool.txt   # espera: feitos=6 … sobrou=0
 
 Um comando só, sem dependências externas. `--check` registra as três telas num
 motor descartável (sem abrir janela), renderiza cada uma, roda as **suítes Luau**
-(`tests/luau/`, 62 casos) e então **executa as ações**: marca e desmarca opções,
+(`tests/luau/`, 200 casos) e então **executa as ações**: marca e desmarca opções,
 escreve no campo livre, navega, provoca um erro, lê um plano semeado, refaz
 falhas. Sai com o número de falhas.
 
@@ -222,6 +270,7 @@ e a contabilidade de custo, com `fetch` enlatado.
 | `ui/scripts/lib/entrevista.luau` | perguntas/respostas e sua projeção para a tela. |
 | `ui/scripts/lib/obra.luau` | o plano multi-arquivo: fila, estados, caminhos, índices. |
 | `ui/scripts/lib/prompts.luau` | os prompts das três fases. |
+| `ui/scripts/lib/avaliacao.luau` | exercícios e prova: os números da tela e a divisão deles em chamadas. |
 | `glacier.d.luau` | tipos das globais do motor, para o editor não pintar tudo de vermelho. |
 | `tests/luau/` | as suítes, rodadas pelo `--check` no interpretador do motor. |
 
@@ -289,6 +338,11 @@ possível.
 - **`if` testa verdade, não "não vazio".** `if="{erro}"` com uma mensagem
   qualquer é *falso* — daí o par `erro` (texto) + `tem_erro` (interruptor). O
   `--check` tem uma asserção para isso.
+- **Campo de número guarda o texto cru.** Os campos de "quantos exercícios" e
+  "quantas questões" não gravam o valor saneado a cada tecla: apagar `16` para
+  escrever `20` passa por `""` e por `2`, e o campo pularia debaixo do dedo. O
+  saneamento acontece na leitura (`A.config`), e o que a conta vai usar aparece
+  no aviso logo abaixo — nunca age escondido.
 - **Acento vira hífen se você deixar.** `[^%w]` não casa UTF-8 multibyte, então
   "Introdução à Concorrência" viraria `introdu-o-concorr-ncia`. `O.slug`
   translitera antes.
