@@ -183,6 +183,94 @@ function n_questoes_mudou(texto): ()
     R.projetar()
 end
 
+-- ── auditoria de sobreposição ───────────────────────────────────────────────
+--
+-- Uma chamada, e é a única correção que ataca a repetição entre capítulos na
+-- RAIZ. As outras (o registro de conceitos, a abertura saindo mais cedo)
+-- mitigam durante a produção — e a produção é paralela, logo parcialmente cega
+-- por construção: quando o trecho 2.1 é escrito, o 1.5 ainda não existe. Este
+-- plano é o único artefato que cabe numa chamada e mostra a obra inteira.
+--
+-- É um clique, e não automática, por duas razões: custa dinheiro, e este app
+-- não gasta sem dizer antes; e depois de editar o plano vale conferir de novo.
+
+function conferir_repeticoes(): ()
+    if (ctx.api_key or "") == "" then
+        E.erro("Falta a chave do OpenRouter (ajuste no início).")
+        return
+    end
+    local e = R.esboco()
+    if e == nil then
+        E.erro("Não há plano para conferir.")
+        return
+    end
+
+    E.erro(nil)
+    L.info("revisao", "auditoria: conferindo sobreposição em "
+        .. #e.capitulos .. " capítulos")
+    ocupar("Procurando assuntos ensinados em dois lugares...")
+
+    local ok, lista, custo = OR.chat_json({
+        key = ctx.api_key,
+        model = ctx.modelo,
+        system = P.SISTEMA_AUDITORIA,
+        user = P.auditoria(ctx.tipo, R.texto_do_plano(e)),
+        temperature = 0.3,
+        max_tokens = 8000,
+    })
+
+    liberar()
+    ctx.custo_total = tostring((tonumber(ctx.custo_total) or 0) + (tonumber(custo) or 0))
+    L.chamada("revisao", "auditoria", ok, custo, ok and "" or tostring(lista))
+
+    if not ok then
+        E.erro(lista)
+        return
+    end
+
+    -- O modelo às vezes embrulha o array num objeto, como já acontece com as
+    -- perguntas da entrevista.
+    if type(lista) == "table" and lista[1] == nil then
+        lista = lista.achados or lista.repeticoes or lista.itens or lista.items or {}
+    end
+
+    R.set_achados(lista, e)
+    R.projetar()
+    local n = #R.achados()
+    L.info("revisao", "auditoria: " .. n .. " sobreposições aproveitáveis")
+    toast({
+        message = (n == 0) and "Nenhum assunto ensinado em dois lugares."
+            or (tostring(n) .. " sobreposições encontradas."),
+        kind = (n == 0) and "success" or "info",
+    })
+end
+
+function aplicar_achado(i): ()
+    local ok, motivo = R.aplicar_achado(tonumber(i) or 0)
+    if not ok and motivo ~= nil and motivo ~= "já aplicado" then
+        E.erro(motivo)
+    else
+        E.erro(nil)
+    end
+    R.projetar()
+end
+
+function aplicar_todos_achados(): ()
+    local aplicados, recusados = R.aplicar_todos()
+    E.erro(nil)
+    if recusados > 0 then
+        -- A trava do título barrou algum: o plano mudou desde a conferência.
+        E.erro(tostring(recusados) .. " correções não puderam ser aplicadas porque o"
+            .. " plano mudou desde a conferência. Confira de novo.")
+    end
+    L.info("revisao", "auditoria: " .. aplicados .. " correções aplicadas, "
+        .. recusados .. " recusadas")
+    R.projetar()
+    if aplicados > 0 then
+        toast({ message = tostring(aplicados) .. " focos corrigidos.", kind = "success" })
+    end
+end
+
 -- ── gerar de novo / confirmar ────────────────────────────────────────────────
 
 --- Pede outro esboço do zero (mesma chamada de `perguntas.luau:gerar()`),
@@ -224,6 +312,11 @@ function gerar_de_novo(): ()
     end
 
     R.set_esboco(esboco)
+    -- Achados do esboço ANTERIOR não valem para este: os índices apontariam
+    -- para outros subcapítulos. A trava do título os recusaria um a um, mas
+    -- deixá-los na tela sugeriria que o plano novo já foi conferido.
+    ctx.auditoria_json = ""
+    ctx.auditoria_feita = ""
     R.projetar()
     toast({ message = "Novo esboço pronto.", kind = "success" })
 end

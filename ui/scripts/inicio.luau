@@ -199,6 +199,8 @@ function refinar(): ()
     -- capítulos errados para o assunto novo.
     ctx.obra_json = nil
     ctx.esboco_json = nil
+    ctx.auditoria_json = ""
+    ctx.auditoria_feita = ""
     ctx.cap_sel = ""
     Rascunho.limpar()
     ctx.custo_total = "0"

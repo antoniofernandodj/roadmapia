@@ -155,6 +155,123 @@ function R.atualizar_sub(ci: number, si: number, campo: string, valor: string)
     R.set_esboco(e)
 end
 
+-- ── a auditoria de sobreposição ──────────────────────────────────────────────
+--
+-- Uma chamada olha o plano inteiro e devolve os assuntos ensinados em dois
+-- lugares, com o foco corrigido de cada repetidor. Os achados ficam aqui, ao
+-- lado do esboço, e são aplicados um a um — nunca em silêncio: quem decide o
+-- que entra no plano é quem paga por ele, que é a regra desta tela inteira.
+
+--- O plano em texto, numerado, do jeito que a auditoria precisa ler.
+--- Inclui o FOCO de cada subcapítulo: é ele, e não o título, que determina o
+--- que o autor daquele trecho vai ensinar.
+function R.texto_do_plano(e: any): string
+    local linhas = {}
+    for i, c in ipairs(e.capitulos) do
+        table.insert(linhas, tostring(i) .. ". " .. tostring(c.titulo))
+        local subs = (type(c.subcapitulos) == "table") and c.subcapitulos or {}
+        for j, s in ipairs(subs) do
+            local foco = (type(s.foco) == "string" and s.foco ~= "") and s.foco or "(sem foco)"
+            table.insert(linhas, "   " .. tostring(i) .. "." .. tostring(j) .. " "
+                .. tostring(s.titulo) .. " — " .. foco)
+        end
+    end
+    return table.concat(linhas, "\n")
+end
+
+function R.achados(): { any }
+    local bruto = ctx.auditoria_json
+    if type(bruto) ~= "string" or bruto == "" then
+        return {}
+    end
+    local ok, v = pcall(json.decode, bruto)
+    if not ok or type(v) ~= "table" then
+        return {}
+    end
+    return v
+end
+
+--- Normaliza o que o modelo devolveu e ANOTA os títulos que os índices
+--- apontam agora.
+---
+--- Os títulos são a trava contra o índice velho: entre auditar e aplicar, a
+--- pessoa pode reordenar, apagar ou acrescentar capítulos, e aí `cap`/`sub`
+--- passam a apontar para outro subcapítulo. Reescrever o foco do subcapítulo
+--- errado seria um estrago silencioso — o pior tipo, porque só apareceria na
+--- obra pronta.
+function R.set_achados(lista: any, e: any)
+    local saida = {}
+    if type(lista) == "table" then
+        for _, a in ipairs(lista) do
+            local ci = tonumber(a.cap)
+            local si = tonumber(a.sub)
+            local cap = (ci ~= nil) and e.capitulos[ci] or nil
+            local subs = (cap ~= nil and type(cap.subcapitulos) == "table")
+                and cap.subcapitulos or nil
+            local sub = (subs ~= nil and si ~= nil) and subs[si] or nil
+            if sub ~= nil and type(a.foco_novo) == "string" and a.foco_novo ~= "" then
+                table.insert(saida, {
+                    cap = ci,
+                    sub = si,
+                    cap_titulo = tostring(cap.titulo),
+                    sub_titulo = tostring(sub.titulo),
+                    assunto = tostring(a.assunto or "assunto repetido"),
+                    dono = tostring(a.dono or ""),
+                    motivo = tostring(a.motivo or ""),
+                    foco_novo = a.foco_novo,
+                    aplicado = false,
+                })
+            end
+        end
+    end
+    ctx.auditoria_json = json.encode(json.array(saida))
+    ctx.auditoria_feita = "true"
+end
+
+--- Aplica um achado: troca o foco do repetidor. Devolve `ok, motivo`.
+function R.aplicar_achado(i: number): (boolean, string?)
+    local lista = R.achados()
+    local a = lista[i]
+    if a == nil then
+        return false, "achado fora da lista"
+    end
+    if a.aplicado then
+        return false, "já aplicado"
+    end
+    local e = R.esboco()
+    if e == nil then
+        return false, "sem esboço"
+    end
+    local cap = e.capitulos[a.cap]
+    local subs = (cap ~= nil and type(cap.subcapitulos) == "table") and cap.subcapitulos or nil
+    local sub = (subs ~= nil) and subs[a.sub] or nil
+    -- A trava: o índice só vale se ainda aponta para o mesmo subcapítulo.
+    if sub == nil or tostring(sub.titulo) ~= a.sub_titulo then
+        return false, "\"" .. a.sub_titulo .. "\" mudou de lugar depois da conferência."
+            .. " Confira de novo antes de aplicar."
+    end
+    sub.foco = a.foco_novo
+    R.set_esboco(e)
+    lista[i].aplicado = true
+    ctx.auditoria_json = json.encode(json.array(lista))
+    return true, nil
+end
+
+--- Aplica todos os que ainda não foram. Devolve quantos entraram e quantos
+--- foram recusados pela trava do título.
+function R.aplicar_todos(): (number, number)
+    local aplicados, recusados = 0, 0
+    for i = 1, #R.achados() do
+        local ok = R.aplicar_achado(i)
+        if ok then
+            aplicados += 1
+        elseif not R.achados()[i].aplicado then
+            recusados += 1
+        end
+    end
+    return aplicados, recusados
+end
+
 -- ── validação ────────────────────────────────────────────────────────────────
 
 --- `nil` se o esboço está pronto para virar `Plano` (mesmo critério de
@@ -233,7 +350,47 @@ function R.projetar()
         ctx.rev_tem_capitulos = "false"
         ctx.rev_tem_selecao = "false"
         ctx.rev_subs_ui = "[]"
+        ctx.aud_ui = "[]"
+        ctx.aud_tem_achados = "false"
+        ctx.aud_tem_pendentes = "false"
+        ctx.aud_nunca_rodou = "true"
+        ctx.aud_rotulo = ""
         return
+    end
+
+    -- Os achados da auditoria, e o convite a rodá-la quando ainda não foi.
+    -- O convite é explícito sobre o preço porque este app mostra o custo antes
+    -- de cobrar; e é insistente porque a alternativa — deixar passar — custa um
+    -- terço da obra escrito duas vezes.
+    local achados = R.achados()
+    local pendentes = 0
+    local linhas_aud = {}
+    for i, a in ipairs(achados) do
+        if not a.aplicado then
+            pendentes += 1
+        end
+        table.insert(linhas_aud, {
+            n = tostring(i),
+            assunto = tostring(a.assunto),
+            onde = tostring(a.cap) .. "." .. tostring(a.sub) .. " " .. tostring(a.sub_titulo)
+                .. "  →  dono: " .. tostring(a.dono),
+            motivo = tostring(a.motivo),
+            rotulo = a.aplicado and "aplicado" or "aplicar",
+            pendente = a.aplicado and "false" or "true",
+        })
+    end
+    ctx.aud_ui = json.encode(json.array(linhas_aud))
+    ctx.aud_tem_achados = (#achados > 0) and "true" or "false"
+    ctx.aud_tem_pendentes = (pendentes > 0) and "true" or "false"
+    ctx.aud_nunca_rodou = (ctx.auditoria_feita == "true") and "false" or "true"
+    if #achados == 0 then
+        ctx.aud_rotulo = (ctx.auditoria_feita == "true")
+            and "Nenhum assunto ensinado em dois lugares." or ""
+    else
+        ctx.aud_rotulo = tostring(#achados) .. " "
+            .. ((#achados == 1) and "assunto ensinado em dois lugares"
+                or "assuntos ensinados em dois lugares")
+            .. ((pendentes == 0) and " — todos corrigidos" or "")
     end
 
     ctx.rev_tem_esboco = "true"

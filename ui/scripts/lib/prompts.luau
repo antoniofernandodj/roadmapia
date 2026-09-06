@@ -206,6 +206,85 @@ function P.esboco(assunto: string, tipo: string?, transcricao: string, n_unidade
     return table.concat(partes, "\n")
 end
 
+-- ── fase 1b: a auditoria do esboço ──────────────────────────────────────────
+--
+-- Uma chamada, entre o esboço e a revisão, e é a única correção que ataca a
+-- repetição na RAIZ. As outras (o registro de conceitos, a abertura saindo mais
+-- cedo) mitigam na produção — e a produção é paralela, logo parcialmente cega
+-- por construção: quando o trecho 2.1 é escrito, o 1.5 ainda não existe. O
+-- esboço é o único artefato pequeno o bastante para caber numa chamada e
+-- grande o bastante para mostrar a obra inteira de uma vez.
+--
+-- O que ela procura foi medido numa obra real: num roadmap de 9 capítulos,
+-- doze dos vinte trechos do capítulo "Fundamentos" eram trailers de capítulos
+-- posteriores, e cerca de 25 dos 39 trechos dos dois primeiros capítulos
+-- antecipavam os capítulos 3 a 9 — um deles com título idêntico ao de um
+-- trecho do capítulo 7.
+
+P.SISTEMA_AUDITORIA = [[
+Você audita o PLANO de uma obra didática procurando um defeito específico e
+caro: o mesmo assunto ensinado em dois lugares.
+
+Ele nasce de um jeito previsível. Um capítulo de fundamentos com muitas vagas
+para preencher acaba recebendo "Visão Geral de X", "Introdução a X" e "X:
+Trade-offs" — quando X tem um capítulo próprio mais adiante. O leitor aprende
+X três vezes, com exemplos diferentes, e quem pagou pagou três vezes.
+
+QUEM É O DONO DE UM ASSUNTO. É onde ele é tratado a fundo — normalmente o
+capítulo dedicado a ele —, e NÃO quem o menciona primeiro. Se o capítulo 7 é
+"Unsafe Code" e o capítulo 1 traz "Safe vs Unsafe: Visão Geral", o dono é o 7:
+quem cede é o 1. Inverter isso é o erro que estraga uma auditoria destas —
+resultaria num capítulo dedicado proibido de ensinar o próprio tema.
+
+O que NÃO é repetição, e você não deve tocar:
+- usar um assunto já ensinado para ensinar outro (isso é progressão);
+- voltar a um assunto em profundidade maior, quando o segundo lugar exige de
+  fato mais do leitor;
+- dois trechos do MESMO capítulo que se completam.
+]]
+
+--- Fase 1b: procura sobreposição no plano e devolve focos corrigidos.
+---
+--- Devolve só CORREÇÕES DE FOCO, nunca remoções: apagar um subcapítulo muda o
+--- tamanho (e o preço) da obra, e essa é uma decisão de quem pediu — a tela de
+--- revisão já tem o botão para isso. Quando o certo é apagar, o `motivo` diz.
+function P.auditoria(tipo: string?, plano_texto: string): string
+    local r = E.rotulo(tipo)
+    return table.concat({
+        "Este é o plano completo de " .. r.artigo .. ", com o foco de cada "
+            .. r.subunidade .. ":",
+        "",
+        plano_texto,
+        "",
+        "Encontre os assuntos ensinados em mais de um lugar. Para cada um,",
+        "escolha o DONO pela regra do sistema (onde o assunto é tratado a fundo,",
+        "não quem o menciona primeiro) e reescreva o foco de CADA outro para que",
+        "ele use o assunto assumindo-o conhecido, em vez de reensiná-lo.",
+        "",
+        "Devolva um array JSON, e nada além dele:",
+        "",
+        '  [',
+        '    {',
+        '      "cap": 1,',
+        '      "sub": 9,',
+        '      "assunto": "o assunto repetido, em 2 a 4 palavras",',
+        '      "dono": "7.1",',
+        '      "motivo": "uma frase: por que este é o repetidor e não o dono",',
+        -- Uma linha, como no molde do esboço, e pela mesma razão: quebra de
+        -- linha dentro de aspas não é JSON válido, e os modelos mais fracos
+        -- copiam fielmente o molde que a gente mandou.
+        '      "foco_novo": "o foco corrigido deste ' .. r.subunidade .. ', em 2 a 3 frases, dizendo o que ASSUMIR como já ensinado e o que ele deve fazer de fato"',
+        '    }',
+        '  ]',
+        "",
+        "`cap` e `sub` são os números do plano acima, e apontam para o REPETIDOR,",
+        "nunca para o dono. Ordene do mais grave para o menos grave.",
+        "Se não houver sobreposição nenhuma, devolva `[]` — é uma resposta boa,",
+        "não uma falha.",
+        "Cada valor de texto ocupa UMA linha.",
+    }, "\n")
+end
+
 -- ── fase 2: o conteúdo ──────────────────────────────────────────────────────
 
 P.SISTEMA_CONTEUDO = [[
