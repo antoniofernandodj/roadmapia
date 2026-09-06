@@ -169,7 +169,14 @@ function gerar_de_novo(): ()
         key = ctx.api_key,
         model = ctx.modelo,
         system = P.SISTEMA_ESBOCO,
-        user = P.esboco(ctx.assunto, ctx.tipo, E.transcricao(), CAPITULOS, SUBCAPITULOS),
+        -- As observações gerais entram AQUI também, e não só no `gerar` de
+        -- `perguntas.luau`: sem elas este esboço sai cego a "nada de código"
+        -- ou "exemplos em Go" e planeja uma obra que cada trecho depois teria
+        -- de contrariar sozinho — que é justamente o que `P.esboco` recebe as
+        -- observações para evitar. "Gerar de novo" tem de gerar o MESMO tipo
+        -- de esboço que o primeiro, não um mais burro.
+        user = P.esboco(ctx.assunto, ctx.tipo, E.transcricao(), CAPITULOS, SUBCAPITULOS,
+            ctx.observacoes),
         temperature = 0.5,
         max_tokens = 16000,
     })
