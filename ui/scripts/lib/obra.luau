@@ -257,6 +257,33 @@ function O.extrair_sintese(texto: string): (string, string)
     return limpo, aparar(sintese)
 end
 
+-- ── de uma tarefa para o que ela escreve ────────────────────────────────────
+
+--- A entrada do plano que uma tarefa preenche: o `Sub` de um trecho, o
+--- `Capitulo` de uma abertura.
+---
+--- Existe porque `concluir`, `falhar` e `reenfileirar` faziam esta mesma
+--- resolução, cada uma com a sua cópia do `if`. Três cópias já eram três
+--- chances de divergir; com mais tipos de tarefa (exercícios, prova) seriam
+--- doze caminhos para acertar, e acertar onze de doze é o resultado provável.
+--- Aqui há um lugar só para ensinar um tipo novo.
+---
+--- O retorno é `any` de propósito: as entradas têm todas `arquivo`, `status` e
+--- `erro`, mas são tipos diferentes, e Luau não deixa escrever num tipo-união.
+function O.alvo_de(plano: Plano, tarefa: Tarefa): any?
+    local cap = plano.capitulos[tarefa.cap]
+    if cap == nil then
+        return nil
+    end
+    if tarefa.tipo == "abertura" then
+        return cap
+    end
+    if tarefa.sub ~= nil then
+        return cap.subs[tarefa.sub]
+    end
+    return nil
+end
+
 --- Grava o texto no arquivo da tarefa e marca o estado. Atômico, como acima.
 --- Devolve `ok, motivo` para o chamador poder registrar uma falha de DISCO —
 --- que é indistinguível de uma falha de rede olhando só para o estado, e foi
@@ -271,16 +298,7 @@ function O.concluir(tarefa: Tarefa, texto: string): (boolean, string?)
     if cap == nil then
         return false, "capítulo fora do plano"
     end
-    -- `Capitulo` numa abertura, `Sub` num trecho: os dois têm `status`/`erro`,
-    -- mas Luau não deixa escrever num tipo-união, daí o `any`. O `if` explícito
-    -- (em vez do `and/or` de antes) é o que prova ao checker que `tarefa.sub`
-    -- só é indexado quando existe.
-    local alvo: any = nil
-    if tarefa.tipo == "abertura" then
-        alvo = cap
-    elseif tarefa.sub ~= nil then
-        alvo = cap.subs[tarefa.sub]
-    end
+    local alvo = O.alvo_de(plano, tarefa)
     if alvo == nil then
         return false, "trecho fora do plano"
     end
@@ -317,16 +335,7 @@ function O.falhar(tarefa: Tarefa, msg: any)
     if plano == nil then
         return
     end
-    local cap = plano.capitulos[tarefa.cap]
-    if cap == nil then
-        return
-    end
-    local alvo: any = nil
-    if tarefa.tipo == "abertura" then
-        alvo = cap
-    elseif tarefa.sub ~= nil then
-        alvo = cap.subs[tarefa.sub]
-    end
+    local alvo = O.alvo_de(plano, tarefa)
     if alvo ~= nil then
         alvo.status = O.ERRO
         alvo.erro = tostring(msg)
@@ -342,16 +351,7 @@ function O.reenfileirar(tarefa: Tarefa)
     if plano == nil then
         return
     end
-    local cap = plano.capitulos[tarefa.cap]
-    if cap == nil then
-        return
-    end
-    local alvo: any = nil
-    if tarefa.tipo == "abertura" then
-        alvo = cap
-    elseif tarefa.sub ~= nil then
-        alvo = cap.subs[tarefa.sub]
-    end
+    local alvo = O.alvo_de(plano, tarefa)
     if alvo ~= nil and alvo.status == O.FAZENDO then
         alvo.status = O.PENDENTE
     end
