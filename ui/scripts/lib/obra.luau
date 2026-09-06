@@ -16,8 +16,19 @@
 --   ├── 01-<capitulo>/
 --   │   ├── README.md      abertura do capítulo
 --   │   ├── 01-<trecho>.md
---   │   └── …
---   └── …
+--   │   ├── …
+--   │   └── exercicios-01.md   (só em curso, se pedido)
+--   ├── …
+--   └── prova/                 (só em curso, se pedida)
+--       ├── README.md
+--       └── parte-01.md
+--
+-- Os arquivos de exercício não levam prefixo numérico de propósito: letra
+-- ordena depois de dígito, então eles caem no fim da listagem do capítulo sem
+-- disputar numeração com os trechos — e mudar o número de exercícios na
+-- revisão não renumera nada.
+
+local A = require("lib/avaliacao")
 
 local O = {}
 
@@ -40,6 +51,24 @@ export type Sub = {
     sintese: string,
 }
 
+--- Uma chamada que escreve parte dos exercícios de um capítulo, ou parte da
+--- prova da obra.
+---
+--- `de`/`ate` são o pedaço de material que ela cobre — índices de trecho
+--- DENTRO do capítulo num lote de exercícios, e índices GLOBAIS de trecho
+--- (a obra achatada, ver `O.trechos_planos`) numa parte de prova. É a divisão
+--- que impede duas chamadas simultâneas de escreverem o mesmo exercício: elas
+--- não recebem o mesmo material. Ver `lib/avaliacao.luau`.
+export type Bloco = {
+    arquivo: string,
+    status: string,
+    erro: string,
+    de: number,
+    ate: number,
+    --- Quantos exercícios (ou questões) esta chamada escreve.
+    n: number,
+}
+
 export type Capitulo = {
     titulo: string,
     resumo: string,
@@ -48,6 +77,10 @@ export type Capitulo = {
     status: string,
     erro: string,
     subs: { Sub },
+    -- Vazio quando a obra não é um curso, ou quando os exercícios foram
+    -- desligados. `nil` num plano gravado por uma versão anterior — todo
+    -- acesso a este campo tem de tolerar isso (ver `O.lotes_de`).
+    exercicios: { Bloco }?,
     -- O texto da abertura do capítulo, reaproveitado como resumo dele para
     -- os capítulos seguintes (ver `O.concluir`). Vazio até a abertura sair.
     sintese: string,
@@ -66,13 +99,30 @@ export type Plano = {
     observacoes: string,
     pasta: string,
     capitulos: { Capitulo },
+    -- Os números de exercícios/questões que valeram para ESTA obra. Moram
+    -- aqui pela mesma razão que `observacoes`: retomar uma produção
+    -- interrompida dias depois tem de usar os mesmos números da primeira
+    -- metade, e o contexto se perde ao fechar o app.
+    avaliacao: { exercicios_por_capitulo: number, questoes_prova: number }?,
+    -- As partes da prova final. Ficam no plano, e não num capítulo, porque a
+    -- prova atravessa a obra inteira.
+    prova: { Bloco }?,
 }
 
---- Uma unidade de trabalho da fila. `sub` é `nil` numa abertura de capítulo.
+--- Uma unidade de trabalho da fila.
+---
+---   tipo          cap    sub    idx
+---   "trecho"      cap.   trecho  —
+---   "abertura"    cap.    —      —
+---   "exercicios"  cap.    —     o lote dentro de `cap.exercicios`
+---   "prova"        —      —     a parte dentro de `plano.prova`
+---
+--- `cap` é opcional porque a prova não pertence a capítulo nenhum.
 export type Tarefa = {
     tipo: string,
-    cap: number,
+    cap: number?,
     sub: number?,
+    idx: number?,
 }
 
 export type Contagem = {
@@ -117,7 +167,12 @@ end
 --- Normaliza o esboço cru do modelo num plano com estado, caminhos de arquivo
 --- e nada de campo faltando. Descarta capítulos/trechos irrecuperáveis em vez
 --- de deixar a produção quebrar no meio.
-function O.montar(esboco: any, slug_base: string, observacoes: string?): (Plano?, string?)
+function O.montar(
+    esboco: any,
+    slug_base: string,
+    observacoes: string?,
+    avaliacao: { exercicios_por_capitulo: number, questoes_prova: number }?
+): (Plano?, string?)
     if type(esboco) ~= "table" or type(esboco.capitulos) ~= "table" then
         return nil, "O modelo não devolveu um esboço com capítulos."
     end
@@ -132,6 +187,12 @@ function O.montar(esboco: any, slug_base: string, observacoes: string?): (Plano?
         observacoes = observacoes or "",
         pasta = pasta,
         capitulos = json.array({}),
+        avaliacao = {
+            exercicios_por_capitulo = (avaliacao ~= nil)
+                and avaliacao.exercicios_por_capitulo or 0,
+            questoes_prova = (avaliacao ~= nil) and avaliacao.questoes_prova or 0,
+        },
+        prova = json.array({}),
     }
 
     for i, c in ipairs(esboco.capitulos) do
@@ -169,7 +230,78 @@ function O.montar(esboco: any, slug_base: string, observacoes: string?): (Plano?
     if #plano.capitulos == 0 then
         return nil, "O esboço veio sem nenhum capítulo aproveitável."
     end
+
+    -- As tarefas de avaliação são MATERIALIZADAS aqui, junto com as de texto,
+    -- e não calculadas a cada `tomar_tarefa`. Duas razões: `O.contar` fica
+    -- honesto desde o primeiro clique (a barra de avanço e a extrapolação de
+    -- custo já sabem o total real), e editar o esboço na revisão recalcula
+    -- tudo do zero — que é o que `O.montar` já promete para slugs e caminhos.
+    local cfg = plano.avaliacao
+    local total_trechos = 0
+    for _, cap in ipairs(plano.capitulos) do
+        total_trechos += #cap.subs
+        cap.exercicios = json.array({})
+        local lotes = A.lotes_exercicios(#cap.subs, cfg.exercicios_por_capitulo)
+        for k, f in ipairs(lotes) do
+            table.insert(cap.exercicios, {
+                arquivo = cap.dir .. "/exercicios-" .. O.numero(k) .. ".md",
+                status = O.PENDENTE,
+                erro = "",
+                de = f.de,
+                ate = f.ate,
+                n = f.n,
+            })
+        end
+    end
+    for k, f in ipairs(A.partes_prova(total_trechos, cfg.questoes_prova)) do
+        table.insert(plano.prova, {
+            arquivo = pasta .. "/prova/parte-" .. O.numero(k) .. ".md",
+            status = O.PENDENTE,
+            erro = "",
+            de = f.de,
+            ate = f.ate,
+            n = f.n,
+        })
+    end
+
     return plano, nil
+end
+
+-- ── acesso tolerante a planos antigos ───────────────────────────────────────
+
+--- Os lotes de exercícios de um capítulo (`O.lotes_de`) e as partes da prova
+--- de um plano (`O.prova_de`).
+---
+--- Um `obra_json` gravado antes desta versão não tem os campos; retomar uma
+--- produção daquelas não pode explodir. Uma lista vazia faz todo o resto do
+--- módulo se comportar exatamente como antes.
+function O.lotes_de(cap: Capitulo): { Bloco }
+    local lista = cap.exercicios
+    if type(lista) ~= "table" then
+        return {}
+    end
+    return lista
+end
+
+function O.prova_de(plano: Plano): { Bloco }
+    local lista = plano.prova
+    if type(lista) ~= "table" then
+        return {}
+    end
+    return lista
+end
+
+--- A obra achatada: todos os trechos em ordem, cada um sabendo de que capítulo
+--- veio. É o índice GLOBAL que as partes da prova usam — e o que `producao`
+--- percorre para montar o prompt de uma parte.
+function O.trechos_planos(plano: Plano): { { ci: number, si: number, cap: Capitulo, sub: Sub } }
+    local flat = {}
+    for ci, cap in ipairs(plano.capitulos) do
+        for si, sub in ipairs(cap.subs) do
+            table.insert(flat, { ci = ci, si = si, cap = cap, sub = sub })
+        end
+    end
+    return flat
 end
 
 -- ── a fila de trabalho ──────────────────────────────────────────────────────
@@ -219,7 +351,60 @@ function O.tomar_tarefa(): Tarefa?
         end
     end
 
+    -- Um lote de exercícios espera só os trechos DA FAIXA DELE, não o capítulo
+    -- inteiro: num capítulo de 20 trechos com 2 lotes, o primeiro já pode sair
+    -- na metade. Mais paralelismo, e o contexto que ele recebe é o mesmo de
+    -- qualquer jeito — são os trechos que ele cobre.
+    for ci, cap in ipairs(plano.capitulos) do
+        for k, lote in ipairs(O.lotes_de(cap)) do
+            if lote.status == O.PENDENTE and O.faixa_resolvida(cap.subs, lote.de, lote.ate) then
+                lote.status = O.FAZENDO
+                O.gravar_plano(plano)
+                return { tipo = "exercicios", cap = ci, idx = k }
+            end
+        end
+    end
+
+    -- A prova, por último e pela mesma regra, só que sobre a obra achatada.
+    local partes = O.prova_de(plano)
+    if #partes > 0 then
+        local flat = O.trechos_planos(plano)
+        local subs_globais = {}
+        for i, t in ipairs(flat) do
+            subs_globais[i] = t.sub
+        end
+        for k, parte in ipairs(partes) do
+            if parte.status == O.PENDENTE
+                and O.faixa_resolvida(subs_globais, parte.de, parte.ate)
+            then
+                parte.status = O.FAZENDO
+                O.gravar_plano(plano)
+                return { tipo = "prova", idx = k }
+            end
+        end
+    end
+
     return nil
+end
+
+--- Todos os trechos de `de..ate` já resolvidos (prontos ou falhos)?
+---
+--- É a dependência dos lotes de exercício e das partes de prova: escrever um
+--- exercício sobre um trecho que ainda não existe é escrever sobre o PLANO
+--- dele, e o app já paga caro para que o material fale do que foi escrito.
+--- Um trecho que falhou conta como resolvido — senão um erro de rede num
+--- trecho travaria o lote inteiro para sempre.
+function O.faixa_resolvida(subs: { Sub }, de: number, ate: number): boolean
+    for k = de, ate do
+        local s = subs[k]
+        if s == nil then
+            return false
+        end
+        if s.status ~= O.PRONTO and s.status ~= O.ERRO then
+            return false
+        end
+    end
+    return true
 end
 
 function O.capitulo_completo(cap: Capitulo): boolean
@@ -271,12 +456,32 @@ end
 --- O retorno é `any` de propósito: as entradas têm todas `arquivo`, `status` e
 --- `erro`, mas são tipos diferentes, e Luau não deixa escrever num tipo-união.
 function O.alvo_de(plano: Plano, tarefa: Tarefa): any?
-    local cap = plano.capitulos[tarefa.cap]
+    local idx = tarefa.idx
+
+    -- A prova é a única que não pertence a capítulo nenhum.
+    if tarefa.tipo == "prova" then
+        if idx == nil then
+            return nil
+        end
+        return O.prova_de(plano)[idx]
+    end
+
+    local ci = tarefa.cap
+    if ci == nil then
+        return nil
+    end
+    local cap = plano.capitulos[ci]
     if cap == nil then
         return nil
     end
     if tarefa.tipo == "abertura" then
         return cap
+    end
+    if tarefa.tipo == "exercicios" then
+        if idx == nil then
+            return nil
+        end
+        return O.lotes_de(cap)[idx]
     end
     if tarefa.sub ~= nil then
         return cap.subs[tarefa.sub]
@@ -294,32 +499,40 @@ function O.concluir(tarefa: Tarefa, texto: string): (boolean, string?)
     if plano == nil then
         return false, "sem plano"
     end
-    local cap = plano.capitulos[tarefa.cap]
-    if cap == nil then
-        return false, "capítulo fora do plano"
-    end
     local alvo = O.alvo_de(plano, tarefa)
     if alvo == nil then
-        return false, "trecho fora do plano"
+        return false, "tarefa fora do plano"
     end
 
-    -- A síntese que este trecho passa adiante. Na abertura é o texto dela
-    -- inteiro (já é o resumo grounded do capítulo, de graça — nenhuma
-    -- chamada extra); num trecho comum é o bloco `<!--SINTESE-->` que
-    -- `P.secao` pede no fim da resposta, separado do corpo antes de gravar.
+    -- A síntese que a tarefa passa adiante. Na abertura é o texto dela inteiro
+    -- (já é o resumo grounded do capítulo, de graça — nenhuma chamada extra);
+    -- num trecho comum é o bloco `<!--SINTESE-->` que `P.secao` pede no fim da
+    -- resposta, separado do corpo antes de gravar.
+    --
+    -- Exercícios e prova não passam nada adiante: ninguém escreve em cima
+    -- deles, e o texto vai inteiro para o arquivo.
     local corpo, sintese = texto, ""
     if tarefa.tipo == "abertura" then
+        local ci = tarefa.cap
+        local cap = (ci ~= nil) and plano.capitulos[ci] or nil
+        if cap == nil then
+            return false, "capítulo fora do plano"
+        end
         sintese = aparar(texto)
         corpo = O.cabecalho_capitulo(plano, cap, texto)
-    else
+    elseif tarefa.tipo == "trecho" then
         corpo, sintese = O.extrair_sintese(texto)
+    else
+        corpo = aparar(texto)
     end
 
     local ok, err = write_file(alvo.arquivo, corpo)
     if ok then
         alvo.status = O.PRONTO
         alvo.erro = ""
-        alvo.sintese = sintese
+        if tarefa.tipo == "trecho" or tarefa.tipo == "abertura" then
+            alvo.sintese = sintese
+        end
     else
         alvo.status = O.ERRO
         alvo.erro = tostring(err)
@@ -366,19 +579,24 @@ function O.reenfileirar_falhas(): number
         return 0
     end
     local n = 0
+    local function soltar(alvo: any)
+        if alvo.status == O.ERRO or alvo.status == O.FAZENDO then
+            alvo.status = O.PENDENTE
+            alvo.erro = ""
+            n += 1
+        end
+    end
     for _, cap in ipairs(plano.capitulos) do
         for _, sub in ipairs(cap.subs) do
-            if sub.status == O.ERRO or sub.status == O.FAZENDO then
-                sub.status = O.PENDENTE
-                sub.erro = ""
-                n = n + 1
-            end
+            soltar(sub)
         end
-        if cap.status == O.ERRO or cap.status == O.FAZENDO then
-            cap.status = O.PENDENTE
-            cap.erro = ""
-            n = n + 1
+        soltar(cap)
+        for _, lote in ipairs(O.lotes_de(cap)) do
+            soltar(lote)
         end
+    end
+    for _, parte in ipairs(O.prova_de(plano)) do
+        soltar(parte)
     end
     O.gravar_plano(plano)
     return n
@@ -439,28 +657,30 @@ end
 -- ── contagens para a tela ───────────────────────────────────────────────────
 
 function O.contar(plano: Plano): Contagem
-    local total, prontos, erros, fazendo = 0, 0, 0, 0
-    for _, cap in ipairs(plano.capitulos) do
-        for _, sub in ipairs(cap.subs) do
-            total = total + 1
-            if sub.status == O.PRONTO then
-                prontos = prontos + 1
-            elseif sub.status == O.ERRO then
-                erros = erros + 1
-            elseif sub.status == O.FAZENDO then
-                fazendo = fazendo + 1
-            end
-        end
-        total = total + 1 -- a abertura do capítulo também é uma tarefa
-        if cap.status == O.PRONTO then
-            prontos = prontos + 1
-        elseif cap.status == O.ERRO then
-            erros = erros + 1
-        elseif cap.status == O.FAZENDO then
-            fazendo = fazendo + 1
+    local c = { total = 0, prontos = 0, erros = 0, fazendo = 0 }
+    local function somar(status: string)
+        c.total += 1
+        if status == O.PRONTO then
+            c.prontos += 1
+        elseif status == O.ERRO then
+            c.erros += 1
+        elseif status == O.FAZENDO then
+            c.fazendo += 1
         end
     end
-    return { total = total, prontos = prontos, erros = erros, fazendo = fazendo }
+    for _, cap in ipairs(plano.capitulos) do
+        for _, sub in ipairs(cap.subs) do
+            somar(sub.status)
+        end
+        somar(cap.status) -- a abertura do capítulo também é uma tarefa
+        for _, lote in ipairs(O.lotes_de(cap)) do
+            somar(lote.status)
+        end
+    end
+    for _, parte in ipairs(O.prova_de(plano)) do
+        somar(parte.status)
+    end
+    return c
 end
 
 -- ── projeção para a tela ────────────────────────────────────────────────────
@@ -490,6 +710,10 @@ function O.projetar(rotulos: { nome: string, unidades: string }?, plano: Plano?)
         ctx.sem_falhas = "true"
         ctx.nada_a_fazer = "true"
         ctx.pode_salvar = "false"
+        ctx.tem_prova = "false"
+        ctx.prova_detalhe = ""
+        ctx.prova_marca = "·"
+        ctx.prova_cor = "#45475A"
         return nil
     end
 
@@ -512,8 +736,27 @@ function O.projetar(rotulos: { nome: string, unidades: string }?, plano: Plano?)
     ctx.rotulo_produzir = (c.prontos > 0) and "Continuar produção" or "Produzir a obra"
 
     if rotulos ~= nil then
-        ctx.obra_subtitulo = rotulos.nome .. " · " .. tostring(#plano.capitulos) .. " "
-            .. rotulos.unidades .. " · " .. tostring(c.total) .. " trechos"
+        -- "trechos" era impreciso mesmo antes (o total sempre incluiu as
+        -- aberturas); com exercícios e prova na conta, seria errado. A
+        -- composição vem logo depois, para o número grande não ficar mudo.
+        local partes = { rotulos.nome, tostring(#plano.capitulos) .. " " .. rotulos.unidades,
+            tostring(c.total) .. " tarefas" }
+        local n_exercicios, n_questoes = 0, 0
+        for _, cap in ipairs(plano.capitulos) do
+            for _, lote in ipairs(O.lotes_de(cap)) do
+                n_exercicios += lote.n
+            end
+        end
+        for _, parte in ipairs(O.prova_de(plano)) do
+            n_questoes += parte.n
+        end
+        if n_exercicios > 0 then
+            table.insert(partes, tostring(n_exercicios) .. " exercícios")
+        end
+        if n_questoes > 0 then
+            table.insert(partes, "prova de " .. tostring(n_questoes) .. " questões")
+        end
+        ctx.obra_subtitulo = table.concat(partes, " · ")
     end
 
     local linhas = {}
@@ -526,11 +769,21 @@ function O.projetar(rotulos: { nome: string, unidades: string }?, plano: Plano?)
                 erros = erros + 1
             end
         end
+        local lotes = O.lotes_de(cap)
+        local lotes_feitos = 0
+        for _, lote in ipairs(lotes) do
+            if lote.status == O.PRONTO then
+                lotes_feitos += 1
+            elseif lote.status == O.ERRO then
+                erros += 1
+            end
+        end
+
         local total_cap = #cap.subs
         local marca, cor
         if erros > 0 then
             marca, cor = "!", "#F38BA8"
-        elseif feitos >= total_cap and cap.status == O.PRONTO then
+        elseif feitos >= total_cap and lotes_feitos >= #lotes and cap.status == O.PRONTO then
             marca, cor = "✓", "#A6E3A1"
         elseif feitos > 0 then
             marca, cor = "…", "#F9E2AF"
@@ -539,6 +792,10 @@ function O.projetar(rotulos: { nome: string, unidades: string }?, plano: Plano?)
         end
 
         local detalhe = tostring(feitos) .. "/" .. tostring(total_cap) .. " trechos"
+        if #lotes > 0 then
+            detalhe = detalhe .. "  ·  exercícios " .. tostring(lotes_feitos)
+                .. "/" .. tostring(#lotes)
+        end
         if erros > 0 then
             detalhe = detalhe .. "  ·  " .. tostring(erros) .. " com erro"
         end
@@ -552,6 +809,42 @@ function O.projetar(rotulos: { nome: string, unidades: string }?, plano: Plano?)
         })
     end
     ctx.capitulos_ui = json.encode(json.array(linhas))
+
+    -- A prova não cabe na lista de capítulos: não pertence a nenhum. Ganha um
+    -- bloco próprio na tela, que só existe quando ela foi pedida.
+    local partes = O.prova_de(plano)
+    ctx.tem_prova = (#partes > 0) and "true" or "false"
+    if #partes > 0 then
+        local feitas, com_erro, questoes = 0, 0, 0
+        for _, p in ipairs(partes) do
+            questoes += p.n
+            if p.status == O.PRONTO then
+                feitas += 1
+            elseif p.status == O.ERRO then
+                com_erro += 1
+            end
+        end
+        local detalhe = tostring(feitas) .. " de " .. tostring(#partes)
+            .. ((#partes == 1) and " parte" or " partes")
+            .. "  ·  " .. tostring(questoes) .. " questões"
+        if com_erro > 0 then
+            detalhe = detalhe .. "  ·  " .. tostring(com_erro) .. " com erro"
+        end
+        ctx.prova_detalhe = detalhe
+        if com_erro > 0 then
+            ctx.prova_marca, ctx.prova_cor = "!", "#F38BA8"
+        elseif feitas >= #partes then
+            ctx.prova_marca, ctx.prova_cor = "✓", "#A6E3A1"
+        elseif feitas > 0 then
+            ctx.prova_marca, ctx.prova_cor = "…", "#F9E2AF"
+        else
+            ctx.prova_marca, ctx.prova_cor = "·", "#45475A"
+        end
+    else
+        ctx.prova_detalhe = ""
+        ctx.prova_marca = "·"
+        ctx.prova_cor = "#45475A"
+    end
     return c
 end
 
@@ -573,6 +866,23 @@ function O.cabecalho_capitulo(plano: Plano, cap: Capitulo, corpo: string): strin
         local marca = (sub.status == O.PRONTO) and "" or "  *(não gerado)*"
         table.insert(linhas, tostring(i) .. ". [" .. sub.titulo .. "](" .. nome .. ")" .. marca)
     end
+
+    local lotes = O.lotes_de(cap)
+    if #lotes > 0 then
+        table.insert(linhas, "")
+        table.insert(linhas, "## Exercícios")
+        table.insert(linhas, "")
+        for i, lote in ipairs(lotes) do
+            local nome = lote.arquivo:match("([^/]+)$") or lote.arquivo
+            local marca = (lote.status == O.PRONTO) and "" or "  *(não gerado)*"
+            -- A faixa aparece no rótulo porque ela É a promessa do arquivo:
+            -- "exercícios dos trechos 1 a 10", não "exercícios, parte 1".
+            table.insert(linhas, tostring(i) .. ". [" .. tostring(lote.n)
+                .. " exercícios — trechos " .. tostring(lote.de) .. " a "
+                .. tostring(lote.ate) .. "](" .. nome .. ")" .. marca)
+        end
+    end
+
     table.insert(linhas, "")
     table.insert(linhas, "[↑ Sumário da obra](../README.md)")
     return table.concat(linhas, "\n")
@@ -617,10 +927,81 @@ function O.gravar_sumario()
             table.insert(linhas, "  " .. tostring(j) .. ". [" .. sub.titulo .. "]("
                 .. dir .. "/" .. nome .. ")" .. marca)
         end
+        for _, lote in ipairs(O.lotes_de(cap)) do
+            local nome = lote.arquivo:match("([^/]+)$") or lote.arquivo
+            local marca = (lote.status == O.PRONTO) and "" or "  *(pendente)*"
+            table.insert(linhas, "  · [Exercícios — trechos " .. tostring(lote.de)
+                .. " a " .. tostring(lote.ate) .. " (" .. tostring(lote.n) .. ")]("
+                .. dir .. "/" .. nome .. ")" .. marca)
+        end
+        table.insert(linhas, "")
+    end
+
+    local partes = O.prova_de(plano)
+    if #partes > 0 then
+        local questoes = 0
+        for _, p in ipairs(partes) do
+            questoes += p.n
+        end
+        table.insert(linhas, "### [Prova final](prova/README.md)")
+        table.insert(linhas, "")
+        table.insert(linhas, tostring(questoes) .. " questões em "
+            .. tostring(#partes) .. ((#partes == 1) and " parte." or " partes."))
         table.insert(linhas, "")
     end
 
     write_file(plano.pasta .. "/README.md", table.concat(linhas, "\n"))
+    O.gravar_indice_prova(plano)
+end
+
+--- O `prova/README.md`: a capa da prova, com o que cada parte cobre.
+---
+--- Não custa chamada nenhuma — é montado daqui, do que o plano já sabe. Sai
+--- junto do sumário da raiz (que roda a cada tarefa concluída), então reflete
+--- o estado mesmo a meio caminho.
+function O.gravar_indice_prova(plano: Plano)
+    local partes = O.prova_de(plano)
+    if #partes == 0 then
+        return
+    end
+    local flat = O.trechos_planos(plano)
+    local questoes = 0
+    for _, p in ipairs(partes) do
+        questoes += p.n
+    end
+
+    local linhas = {
+        "# Prova final — " .. plano.titulo,
+        "",
+        tostring(questoes) .. " questões, divididas por assunto. Cada parte cobre um",
+        "pedaço do curso; juntas, cobrem o curso inteiro, sem repetição.",
+        "",
+        "O gabarito de cada parte vem no fim do próprio arquivo dela — dá para",
+        "responder tudo antes de descer até ele.",
+        "",
+    }
+    for i, p in ipairs(partes) do
+        local nome = p.arquivo:match("([^/]+)$") or p.arquivo
+        -- De que capítulos são os trechos desta parte: é isso que diz à pessoa
+        -- o que estudar antes de abrir o arquivo.
+        local primeiro = flat[p.de]
+        local ultimo = flat[p.ate]
+        local faixa = ""
+        if primeiro ~= nil and ultimo ~= nil then
+            if primeiro.ci == ultimo.ci then
+                faixa = "capítulo " .. tostring(primeiro.ci)
+            else
+                faixa = "capítulos " .. tostring(primeiro.ci) .. " a " .. tostring(ultimo.ci)
+            end
+        end
+        local marca = (p.status == O.PRONTO) and "" or "  *(não gerada)*"
+        table.insert(linhas, tostring(i) .. ". [Parte " .. tostring(i) .. " — "
+            .. tostring(p.n) .. " questões" .. ((faixa ~= "") and (", " .. faixa) or "")
+            .. "](" .. nome .. ")" .. marca)
+    end
+    table.insert(linhas, "")
+    table.insert(linhas, "[↑ Sumário da obra](../README.md)")
+    write_file(plano.pasta .. "/prova/README.md", table.concat(linhas, "\n"))
 end
 
 -- ── utilidades ──────────────────────────────────────────────────────────────

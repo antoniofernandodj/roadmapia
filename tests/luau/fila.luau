@@ -44,8 +44,11 @@ local function esboco(n_cap, n_sub)
     return e
 end
 
+-- `tostring` em tudo porque uma parte de prova não tem `cap` (ela atravessa a
+-- obra inteira) e um trecho não tem `idx`: concatenar `nil` cru estouraria.
 local function chave(t)
-    return t.tipo .. ":" .. t.cap .. ":" .. tostring(t.sub)
+    return t.tipo .. ":" .. tostring(t.cap) .. ":" .. tostring(t.sub)
+        .. ":" .. tostring(t.idx)
 end
 
 function M.rodar()
@@ -345,6 +348,209 @@ function M.rodar()
     limpar_ctx()
     O.projetar()
     conferir(ctx.tem_obra == "false", "sem plano, a tela se declara vazia")
+
+    -- ── 8. exercícios e prova ───────────────────────────────────────────────────
+    --
+    -- Dois tipos de tarefa a mais na mesma fila. O risco é o de sempre, e é
+    -- pago: uma tarefa que sai duas vezes é uma chamada cobrada duas vezes.
+    -- O risco NOVO é a dependência — um exercício escrito antes do trecho que
+    -- ele cobra fala do PLANO do trecho, não do texto dele.
+
+    local CFG = { exercicios_por_capitulo = 10, questoes_prova = 20 }
+    arquivos = {}
+    local pa = assert(O.montar(esboco(2, 4), "avaliacao", nil, CFG))
+    O.gravar_plano(pa)
+
+    -- 4 trechos por capítulo e 10 exercícios pedidos: 2 lotes de 5, cobrindo
+    -- os trechos 1-2 e 3-4. É a divisão que impede os dois de escreverem o
+    -- mesmo exercício — eles não recebem o mesmo material.
+    local lotes1 = O.lotes_de(pa.capitulos[1])
+    conferir(#lotes1 == 2, "10 exercícios num capítulo de 4 trechos viram 2 lotes",
+        tostring(#lotes1))
+    conferir(lotes1[1].de == 1 and lotes1[1].ate == 2
+        and lotes1[2].de == 3 and lotes1[2].ate == 4,
+        "os lotes cobrem faixas contíguas e disjuntas de trechos")
+    conferir(lotes1[1].n == 5 and lotes1[2].n == 5, "e repartem os 10 exercícios")
+    conferir(lotes1[1].arquivo == "saidas/avaliacao/01-capitulo-1/exercicios-01.md",
+        "o arquivo do lote fica dentro do capítulo", lotes1[1].arquivo)
+
+    local partes = O.prova_de(pa)
+    conferir(#partes == 2, "20 questões viram 2 partes de prova", tostring(#partes))
+    conferir(partes[1].de == 1 and partes[1].ate == 4
+        and partes[2].de == 5 and partes[2].ate == 8,
+        "as partes dividem os trechos da OBRA, não de um capítulo")
+    conferir(partes[1].arquivo == "saidas/avaliacao/prova/parte-01.md",
+        "a prova mora numa pasta própria", partes[1].arquivo)
+
+    -- 8 trechos + 2 aberturas + 4 lotes + 2 partes.
+    conferir(O.contar(pa).total == 16, "contar inclui exercícios e prova",
+        tostring(O.contar(pa).total))
+
+    -- A drenagem inteira, cobrando as duas invariantes ao mesmo tempo: nada
+    -- sai duas vezes, e nada sai antes do material que cobre.
+    --
+    -- A checagem da dependência olha os STATUS crus, e de propósito não chama
+    -- `O.faixa_resolvida`: usar a mesma função que a fila usa para decidir
+    -- tornaria o teste tautológico — arrancar a guarda de `tomar_tarefa`
+    -- passaria despercebido, porque as duas pontas concordariam em estar
+    -- erradas. (Verificado: com a guarda removida, este teste falha.)
+    local function trechos_prontos(subs, de, ate): boolean
+        for k = de, ate do
+            local s = subs[k]
+            if s == nil or (s.status ~= "pronto" and s.status ~= "erro") then
+                return false
+            end
+        end
+        return true
+    end
+
+    -- O pool tem de ficar CHEIO: é com trechos em voo (status "fazendo") que a
+    -- dependência é exercitada. Drenando um de cada vez — pega, conclui, pega —
+    -- nunca há trecho pendurado, `tomar_tarefa` esvazia os trechos antes de
+    -- olhar para os lotes, e a guarda jamais é consultada. Foi assim que a
+    -- primeira versão deste teste passou com a guarda arrancada.
+    local ordem, vistas_av, dup_av, fora_de_hora = {}, {}, 0, 0
+    local emvoo_av = {}
+    while true do
+        while #emvoo_av < 6 do
+            local t = O.tomar_tarefa()
+            if t == nil then
+                break
+            end
+            if vistas_av[chave(t)] then
+                dup_av += 1
+            end
+            vistas_av[chave(t)] = true
+
+            local pl = O.plano()
+            if t.tipo == "exercicios" then
+                local cap = pl.capitulos[t.cap]
+                local lote = O.lotes_de(cap)[t.idx]
+                if not trechos_prontos(cap.subs, lote.de, lote.ate) then
+                    fora_de_hora += 1
+                end
+            elseif t.tipo == "prova" then
+                local globais = {}
+                for i, x in ipairs(O.trechos_planos(pl)) do
+                    globais[i] = x.sub
+                end
+                local parte = O.prova_de(pl)[t.idx]
+                if not trechos_prontos(globais, parte.de, parte.ate) then
+                    fora_de_hora += 1
+                end
+            end
+            table.insert(ordem, t)
+            table.insert(emvoo_av, t)
+        end
+        if #emvoo_av == 0 then
+            break
+        end
+        local feita = table.remove(emvoo_av, 1)
+        O.concluir(feita, "texto de " .. chave(feita))
+    end
+
+    conferir(dup_av == 0, "com exercícios e prova, nenhuma tarefa sai duas vezes")
+    conferir(#ordem == 16, "a fila entrega as 16 tarefas", tostring(#ordem))
+    conferir(fora_de_hora == 0,
+        "nenhum lote nem parte sai antes dos trechos que ele cobra",
+        tostring(fora_de_hora) .. " fora de hora")
+    conferir(O.contar(O.plano()).prontos == 16, "tudo termina pronto")
+
+    -- Um lote não passa síntese adiante (ninguém escreve em cima dele) e o
+    -- texto vai INTEIRO para o arquivo — nada de recorte.
+    local lote_pronto = O.plano().capitulos[1].exercicios[1]
+    conferir(lote_pronto.status == "pronto", "o lote termina pronto")
+    conferir(lote_pronto.sintese == nil, "um lote não ganha campo de síntese")
+    conferir(arquivos[lote_pronto.arquivo] ~= nil, "o lote grava o arquivo dele")
+    conferir(arquivos[O.prova_de(O.plano())[1].arquivo] ~= nil,
+        "a parte de prova grava o arquivo dela")
+
+    -- ── 8b. falhar e refazer um lote e uma parte ────────────────────────────────
+    --
+    -- O caminho que o refactor do `O.alvo_de` existe para proteger: uma tarefa
+    -- nova que funcionasse ao CONCLUIR e vazasse em "fazendo" ao FALHAR ficaria
+    -- presa para sempre, sem aparecer em "refazer falhas".
+
+    O.gravar_plano(assert(O.montar(esboco(1, 2), "falha-av", nil,
+        { exercicios_por_capitulo = 2, questoes_prova = 5 })))
+    local falhadas = {}
+    while true do
+        local t = O.tomar_tarefa()
+        if t == nil then
+            break
+        end
+        if t.tipo == "exercicios" or t.tipo == "prova" then
+            O.falhar(t, "500 do servidor")
+            table.insert(falhadas, t)
+        else
+            O.concluir(t, "x")
+        end
+    end
+    conferir(#falhadas == 2, "saiu um lote e uma parte", tostring(#falhadas))
+    conferir(O.contar(O.plano()).erros == 2, "falhar marca erro em lote e em parte",
+        tostring(O.contar(O.plano()).erros))
+    conferir(O.reenfileirar_falhas() == 2, "refazer falhas alcança lote e parte")
+
+    local voltou = O.tomar_tarefa()
+    conferir(voltou ~= nil and (voltou.tipo == "exercicios" or voltou.tipo == "prova"),
+        "e eles voltam a sair")
+    O.reenfileirar(voltou)
+    conferir(O.contar(O.plano()).erros == 0, "reenfileirar um lote não marca erro")
+    conferir(chave(O.tomar_tarefa()) == chave(voltou),
+        "o lote reenfileirado por rate limit volta a sair")
+
+    -- ── 8c. os índices em disco ─────────────────────────────────────────────────
+
+    arquivos = {}
+    O.gravar_plano(assert(O.montar(esboco(2, 2), "indices-av", nil,
+        { exercicios_por_capitulo = 4, questoes_prova = 10 })))
+    while true do
+        local t = O.tomar_tarefa()
+        if t == nil then
+            break
+        end
+        O.concluir(t, "corpo")
+    end
+    O.gravar_sumario()
+
+    local cap_readme = arquivos["saidas/indices-av/01-capitulo-1/README.md"]
+    conferir(cap_readme ~= nil and cap_readme:find("## Exercícios", 1, true) ~= nil,
+        "a abertura do capítulo lista os exercícios dele")
+    conferir(cap_readme ~= nil and cap_readme:find("(exercicios-01.md)", 1, true) ~= nil,
+        "…com link para o arquivo")
+    local raiz = arquivos["saidas/indices-av/README.md"]
+    conferir(raiz ~= nil and raiz:find("Prova final", 1, true) ~= nil,
+        "o sumário da obra anuncia a prova")
+    local prova_readme = arquivos["saidas/indices-av/prova/README.md"]
+    conferir(prova_readme ~= nil, "o índice da prova é gravado — sem chamada nenhuma")
+    conferir(prova_readme ~= nil and prova_readme:find("Parte 1", 1, true) ~= nil,
+        "…listando as partes")
+
+    -- 4 trechos + 2 aberturas + 2 lotes + 1 parte + sumário + índice da prova.
+    local n_av = 0
+    for _ in pairs(arquivos) do
+        n_av += 1
+    end
+    conferir(n_av == 11, "um arquivo por tarefa, mais os dois índices", tostring(n_av))
+
+    -- ── 8d. planos de antes desta versão ────────────────────────────────────────
+    --
+    -- Um `obra_json` gravado por uma versão anterior não tem `exercicios` nem
+    -- `prova`. Retomar uma produção daquelas não pode explodir nem mudar de
+    -- contagem no meio.
+
+    local antigo = assert(O.montar(esboco(1, 2), "antigo"))
+    conferir(#O.lotes_de(antigo.capitulos[1]) == 0, "sem avaliação, nenhum lote")
+    conferir(#O.prova_de(antigo) == 0, "sem avaliação, nenhuma parte de prova")
+
+    antigo.capitulos[1].exercicios = nil
+    antigo.prova = nil
+    O.gravar_plano(antigo)
+    conferir(O.contar(O.plano()).total == 3,
+        "plano sem os campos novos conta como sempre contou",
+        tostring(O.contar(O.plano()).total))
+    conferir(O.tomar_tarefa() ~= nil, "…e continua produzindo")
+    conferir(ctx.tem_prova == "false", "…e a tela não anuncia prova nenhuma")
 
     write_file = write_file_real
     limpar_ctx()
