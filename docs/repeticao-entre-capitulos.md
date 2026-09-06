@@ -267,7 +267,7 @@ disse na §4 que não a faria sem você decidir. Continua disponível.
 
 | § | Correção | Chamadas | Onde |
 |---|---|---|---|
-| 3.1 | Auditoria do esboço | +1, por clique | botão "Conferir repetições" na revisão |
+| 3.1 | Auditoria do esboço | +1, automática | segunda metade da fase 1, em `R.auditar` |
 | 3.2 | Registro do que já foi ensinado | 0 | `plano.ensinado`, alimentado pelo bloco `<!--CONCEITOS-->` |
 | 3.3 | Abertura sai assim que o capítulo fecha | 0 | ordem dos laços em `O.tomar_tarefa` |
 | 3.5 | Medir a repetição | 0 | `plano.repeticoes`, na tela de produção |
@@ -295,18 +295,29 @@ apagam subcapítulos. Apagar muda o tamanho e o preço da obra, e essa decisão 
 de quem paga — o botão para isso já existe na tela. Quando o certo é apagar, o
 `motivo` do achado diz.
 
-**A auditoria é um clique, não automática.** Custa dinheiro, e este app não
-gasta sem avisar; e depois de editar o plano vale conferir de novo. Enquanto
-nunca rodou, o painel explica o defeito que ela procura em vez de mostrar um
-botão mudo.
+**A auditoria é automática, não um clique.** Nasceu como botão na tela de
+revisão e estava errado: sobreposição não é uma opinião que a pessoa possa
+querer ou não ter, é um defeito do plano — e um defeito que ninguém clicou para
+procurar continua lá. Agora ela é a segunda metade da fase 1, e roda junto com
+o esboço (tanto no `gerar` quanto no "gerar de novo"): quem chega à revisão
+chega com o plano já conferido.
 
-**Aplicar um achado tem uma trava que a proposta não previa.** Entre conferir e
-aplicar, a pessoa pode reordenar, apagar ou acrescentar capítulos — e aí
-`cap`/`sub` apontam para outro subcapítulo. Reescrever o foco do errado não
-daria erro nenhum: apareceria só como um trecho fora de lugar na obra pronta.
-Cada achado guarda o TÍTULO que o índice apontava, e aplicar recusa quando ele
-mudou. Verificado por mutação: sem a trava, o `--check` acusa a correção
-aplicada no subcapítulo errado.
+As correções são aplicadas na hora, e a tela de revisão lista o que mudou com
+um **desfazer** por linha — cada achado guarda o `foco_antigo`. Não é edição
+silenciosa: é edição visível e reversível, e o foco continua editável à mão como
+qualquer outro campo.
+
+Se a chamada da auditoria falhar, **nada é bloqueado**: o esboço já foi pago e é
+válido, então o erro vira um aviso no log e o fluxo segue para a revisão. Uma
+auditoria que não voltou é uma obra sem esta melhoria, não uma obra perdida.
+
+**Desfazer tem uma trava que a proposta não previa.** Entre a conferência e o
+clique em "desfazer", a pessoa pode reordenar, apagar ou acrescentar capítulos —
+e aí `cap`/`sub` apontam para outro subcapítulo. Repor o foco antigo no errado
+não daria erro nenhum: apareceria só como um trecho fora de lugar na obra
+pronta. Cada achado guarda o TÍTULO que o índice apontava, e desfazer recusa
+quando ele mudou. Verificado por mutação: sem a trava, o `--check` acusa a
+mexida no subcapítulo errado.
 
 **Os exercícios também recebem o registro**, com a regra invertida: ali o que já
 foi ensinado é o que PODE ser exigido, e combinar com o assunto do capítulo é o
@@ -321,8 +332,13 @@ como assunto novo — a herança que a §5 previa.
   que a pessoa lê como "isto está duplicado", mas significa que o placar é um
   piso, não um total.
 - **A janela cega do começo continua lá.** Quando o trecho 2.1 é escrito, quase
-  nada foi escrito ainda. Só a auditoria do esboço ataca isso, e ela depende de
-  um clique.
+  nada foi escrito ainda. Quem ataca isso é a auditoria do esboço, que agora
+  roda sempre — mas ela corrige o PLANO, e um plano corrigido ainda depende de
+  o autor de cada trecho respeitar o foco que recebeu.
+- **Não há como reconferir depois de editar o plano à mão.** A auditoria roda
+  quando o esboço é gerado. Se você acrescentar cinco capítulos na revisão, eles
+  não passam por ela. Um botão de reconferência resolveria, mas seria de novo um
+  botão — e a decisão foi que o caminho normal não deve depender de clique.
 - **O registro tem teto de 400 conceitos.** Quando lota, quem fica são os
   primeiros — são os fundamentos, que é justamente o que os capítulos
   posteriores reensinam.

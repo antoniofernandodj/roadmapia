@@ -28,7 +28,8 @@ Interface em [glacier-ui](../glacier-ui) (XML declarativo + Luau), modelos via
 2. **`perguntas`** — uma pergunta por vez. Cada uma traz opções sugeridas pela IA
    (chips clicáveis, **seleção múltipla**) **e** um campo de texto livre — os dois
    convivem: dá para marcar duas opções e completar por escrito.
-3. **`producao`** — o "Generate" planeja a obra (10 capítulos × 20 trechos), e a
+3. **`producao`** — o "Generate" planeja a obra (10 capítulos × 20 trechos) e
+   confere o plano contra repetições, e a
    produção escreve cada trecho numa chamada própria, seis em paralelo, gravando
    um arquivo por trecho conforme ficam prontos.
 
@@ -185,12 +186,18 @@ Havia duas causas, e elas pedem correções diferentes:
 **No plano.** Pedir "EXATAMENTE 10 capítulos × 20 subcapítulos" dá 200 vagas
 que precisam ser preenchidas. Quando o assunto não tem 200 unidades distintas
 nessa forma, o modelo enche as vagas do primeiro capítulo com o índice do resto
-da obra. O botão **"Conferir repetições"**, na tela de revisão, gasta uma
-chamada para ler o plano inteiro e devolver, para cada assunto ensinado em dois
-lugares, qual é o dono e o foco corrigido dos outros. A regra que decide o dono
-é o que importa: é onde o assunto é tratado a fundo, **não** quem o menciona
-primeiro — senão a correção proibiria um capítulo dedicado de ensinar o próprio
-tema.
+da obra.
+
+Por isso a fase 1 tem duas metades. Depois de planejar, uma segunda chamada lê
+o plano inteiro e devolve, para cada assunto planejado em dois lugares, qual é
+o dono e o foco corrigido dos outros — e as correções são aplicadas na hora.
+Não é um botão: sobreposição não é uma opinião que se possa querer ou não ter,
+é um defeito do plano, e um defeito que ninguém clicou para procurar continua
+lá. A tela de revisão lista o que mudou, com um "desfazer" por linha.
+
+A regra que decide o dono é o que importa: é onde o assunto é tratado a fundo,
+**não** quem o menciona primeiro — senão a correção proibiria um capítulo
+dedicado de ensinar o próprio tema.
 
 **Na produção.** Foi medido, simulando 10 × 20 com os 6 workers reais: quando o
 trecho 7.1 era escrito, ZERO dos seis capítulos anteriores tinha síntese de

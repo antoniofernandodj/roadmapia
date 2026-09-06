@@ -225,8 +225,23 @@ function gerar(): ()
     -- também gravar o rascunho em disco (ver `lib/rascunho.luau`) — sem isso
     -- um esboço recém-gerado sobrevive só até a próxima vez que o app fechar.
     R.set_esboco(esboco)
-    L.info("perguntas", "esboço pronto para revisão: "
+    L.info("perguntas", "esboço pronto: "
         .. tostring(#(esboco.capitulos or {})) .. " capítulos")
+
+    -- Fase 1b, automática: o mesmo assunto planejado em dois capítulos é um
+    -- defeito do plano, não uma opinião — e um defeito que ninguém clicou para
+    -- procurar continua lá. Roda aqui, e não na tela seguinte, porque é aqui
+    -- que o plano nasce; quem chega à revisão chega com ele já conferido.
+    ocupar("Conferindo assuntos planejados em dois lugares...")
+    local n_corr, erro_aud = R.auditar()
+    liberar()
+    if erro_aud ~= nil then
+        -- Não bloqueia: o esboço já foi pago e é válido. Uma auditoria que não
+        -- voltou é uma obra sem esta melhoria, não uma obra perdida.
+        L.aviso("perguntas", "auditoria não rodou: " .. erro_aud)
+    else
+        L.info("perguntas", "auditoria: " .. n_corr .. " focos corrigidos")
+    end
     -- Projeta AQUI pelo mesmo motivo de sempre: o `init` de `revisao` já
     -- rodou no arranque, com o contexto vazio, e navegar não o chama de novo
     -- (ver o mesmo comentário em `revisao.luau:confirmar()`).

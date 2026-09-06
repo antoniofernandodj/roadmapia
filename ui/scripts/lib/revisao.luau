@@ -14,6 +14,8 @@
 
 local Rascunho = require("lib/rascunho")
 local A = require("lib/avaliacao")
+local OR = require("lib/openrouter")
+local P = require("lib/prompts")
 
 local R = {}
 
@@ -158,9 +160,17 @@ end
 -- ── a auditoria de sobreposição ──────────────────────────────────────────────
 --
 -- Uma chamada olha o plano inteiro e devolve os assuntos ensinados em dois
--- lugares, com o foco corrigido de cada repetidor. Os achados ficam aqui, ao
--- lado do esboço, e são aplicados um a um — nunca em silêncio: quem decide o
--- que entra no plano é quem paga por ele, que é a regra desta tela inteira.
+-- lugares, com o foco corrigido de cada repetidor.
+--
+-- Ela roda AUTOMATICAMENTE, como segunda metade da fase 1: quem gera um esboço
+-- gera um esboço já conferido, e ninguém chega à revisão com um plano por
+-- conferir. Era um botão, e um botão estava errado — a sobreposição não é uma
+-- opinião que a pessoa possa querer ou não ter, é um defeito do plano, e um
+-- defeito que ninguém clicou para procurar continua lá.
+--
+-- As correções são aplicadas na hora, e a tela lista o que mudou com um
+-- "desfazer" por linha. Não é edição silenciosa: é edição visível e
+-- reversível, e o foco continua editável à mão como qualquer outro campo.
 
 --- O plano em texto, numerado, do jeito que a auditoria precisa ler.
 --- Inclui o FOCO de cada subcapítulo: é ele, e não o título, que determina o
@@ -219,13 +229,17 @@ function R.set_achados(lista: any, e: any)
                     dono = tostring(a.dono or ""),
                     motivo = tostring(a.motivo or ""),
                     foco_novo = a.foco_novo,
+                    -- Guardado para o "desfazer": a correção é aplicada
+                    -- automaticamente, então sem isto o foco original estaria
+                    -- perdido e discordar da auditoria custaria reescrevê-lo
+                    -- à mão.
+                    foco_antigo = (type(sub.foco) == "string") and sub.foco or "",
                     aplicado = false,
                 })
             end
         end
     end
     ctx.auditoria_json = json.encode(json.array(saida))
-    ctx.auditoria_feita = "true"
 end
 
 --- Aplica um achado: troca o foco do repetidor. Devolve `ok, motivo`.
@@ -257,6 +271,35 @@ function R.aplicar_achado(i: number): (boolean, string?)
     return true, nil
 end
 
+--- Devolve um achado: repõe o foco original.
+---
+--- Mesma trava de título do `aplicar`, e pela mesma razão: entre a auditoria e
+--- o clique em "desfazer" a pessoa pode ter reordenado ou apagado capítulos, e
+--- repor o foco antigo no subcapítulo errado seria o mesmo estrago, ao
+--- contrário.
+function R.desfazer_achado(i: number): (boolean, string?)
+    local lista = R.achados()
+    local a = lista[i]
+    if a == nil or not a.aplicado then
+        return false, nil
+    end
+    local e = R.esboco()
+    if e == nil then
+        return false, "sem esboço"
+    end
+    local cap = e.capitulos[a.cap]
+    local subs = (cap ~= nil and type(cap.subcapitulos) == "table") and cap.subcapitulos or nil
+    local sub = (subs ~= nil) and subs[a.sub] or nil
+    if sub == nil or tostring(sub.titulo) ~= a.sub_titulo then
+        return false, "\"" .. a.sub_titulo .. "\" mudou de lugar. Edite o foco à mão."
+    end
+    sub.foco = a.foco_antigo
+    R.set_esboco(e)
+    lista[i].aplicado = false
+    ctx.auditoria_json = json.encode(json.array(lista))
+    return true, nil
+end
+
 --- Aplica todos os que ainda não foram. Devolve quantos entraram e quantos
 --- foram recusados pela trava do título.
 function R.aplicar_todos(): (number, number)
@@ -270,6 +313,54 @@ function R.aplicar_todos(): (number, number)
         end
     end
     return aplicados, recusados
+end
+
+--- A fase 1b inteira: pede a auditoria, aplica o que veio, e devolve quantas
+--- correções entraram.
+---
+--- NUNCA propaga a falha como erro fatal. O esboço já foi pago e é válido; uma
+--- auditoria que não voltou é uma obra sem esta melhoria, não uma obra
+--- perdida. Quem chama registra o aviso e segue para a revisão.
+---
+--- Suspende a corrotina no `fetch`, como qualquer chamada — só pode ser
+--- chamada de dentro de uma ação despachada.
+function R.auditar(): (number, string?)
+    local e = R.esboco()
+    if e == nil then
+        return 0, "não há plano para conferir"
+    end
+    if (ctx.api_key or "") == "" then
+        return 0, "sem chave da API"
+    end
+
+    local ok, lista, custo = OR.chat_json({
+        key = ctx.api_key,
+        model = ctx.modelo,
+        system = P.SISTEMA_AUDITORIA,
+        user = P.auditoria(ctx.tipo, R.texto_do_plano(e)),
+        temperature = 0.3,
+        max_tokens = 8000,
+    })
+    ctx.custo_total = tostring((tonumber(ctx.custo_total) or 0) + (tonumber(custo) or 0))
+    if not ok then
+        return 0, tostring(lista)
+    end
+
+    -- O modelo às vezes embrulha o array num objeto, como já acontece com as
+    -- perguntas da entrevista.
+    if type(lista) == "table" and lista[1] == nil then
+        lista = lista.achados or lista.repeticoes or lista.itens or lista.items or {}
+    end
+
+    -- Relê o esboço: `set_achados` precisa da forma que está valendo AGORA, e
+    -- entre o pedido e a resposta a corrotina ficou suspensa.
+    local atual = R.esboco()
+    if atual == nil then
+        return 0, "o plano sumiu durante a conferência"
+    end
+    R.set_achados(lista, atual)
+    local aplicados = R.aplicar_todos()
+    return aplicados, nil
 end
 
 -- ── validação ────────────────────────────────────────────────────────────────
@@ -352,8 +443,6 @@ function R.projetar()
         ctx.rev_subs_ui = "[]"
         ctx.aud_ui = "[]"
         ctx.aud_tem_achados = "false"
-        ctx.aud_tem_pendentes = "false"
-        ctx.aud_nunca_rodou = "true"
         ctx.aud_rotulo = ""
         return
     end
@@ -363,11 +452,11 @@ function R.projetar()
     -- de cobrar; e é insistente porque a alternativa — deixar passar — custa um
     -- terço da obra escrito duas vezes.
     local achados = R.achados()
-    local pendentes = 0
     local linhas_aud = {}
+    local aplicados = 0
     for i, a in ipairs(achados) do
-        if not a.aplicado then
-            pendentes += 1
+        if a.aplicado then
+            aplicados += 1
         end
         table.insert(linhas_aud, {
             n = tostring(i),
@@ -375,22 +464,19 @@ function R.projetar()
             onde = tostring(a.cap) .. "." .. tostring(a.sub) .. " " .. tostring(a.sub_titulo)
                 .. "  →  dono: " .. tostring(a.dono),
             motivo = tostring(a.motivo),
-            rotulo = a.aplicado and "aplicado" or "aplicar",
-            pendente = a.aplicado and "false" or "true",
+            rotulo = a.aplicado and "desfazer" or "desfeito",
         })
     end
     ctx.aud_ui = json.encode(json.array(linhas_aud))
     ctx.aud_tem_achados = (#achados > 0) and "true" or "false"
-    ctx.aud_tem_pendentes = (pendentes > 0) and "true" or "false"
-    ctx.aud_nunca_rodou = (ctx.auditoria_feita == "true") and "false" or "true"
     if #achados == 0 then
-        ctx.aud_rotulo = (ctx.auditoria_feita == "true")
-            and "Nenhum assunto ensinado em dois lugares." or ""
+        ctx.aud_rotulo = ""
     else
         ctx.aud_rotulo = tostring(#achados) .. " "
-            .. ((#achados == 1) and "assunto ensinado em dois lugares"
-                or "assuntos ensinados em dois lugares")
-            .. ((pendentes == 0) and " — todos corrigidos" or "")
+            .. ((#achados == 1) and "ASSUNTO PLANEJADO EM DOIS LUGARES"
+                or "ASSUNTOS PLANEJADOS EM DOIS LUGARES")
+            .. ((aplicados == #achados) and " — CORRIGIDOS"
+                or (" — " .. tostring(aplicados) .. " CORRIGIDOS"))
     end
 
     ctx.rev_tem_esboco = "true"

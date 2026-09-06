@@ -101,41 +101,18 @@
         </text>
       </column>
 
-      <!-- ── conferência de repetições ────────────────────────────────── -->
-      <!-- A única correção que ataca a repetição entre capítulos na raiz: a
-        produção é paralela e por isso parcialmente cega, e este plano é o
-        único artefato que cabe numa chamada e mostra a obra inteira. É um
-        clique, e não automático, porque custa dinheiro — e este app não
-        gasta sem dizer antes. -->
-      <column class="painel">
-        <row class="linha">
-          <column class="dupla">
-            <text class="rotulo">REPETIÇÃO ENTRE CAPÍTULOS</text>
-            <text class="ajuda" if="{aud_nunca_rodou}" equals="true">
-              Um capítulo de fundamentos costuma virar prévia dos capítulos
-              seguintes, e aí o mesmo assunto é escrito (e pago) duas vezes.
-              Uma chamada confere isso no plano inteiro.
-            </text>
-            <text class="nota" if="{aud_nunca_rodou}" not_equals="true">
-              {aud_rotulo}
-            </text>
-          </column>
-          <button
-            class="btn"
-            text="Conferir repetições"
-            on_click="conferir_repeticoes"
-            disabled="{ocupado}"
-          />
-          <button
-            class="btn"
-            text="Aplicar todas"
-            on_click="aplicar_todos_achados"
-            hidden="{aud_tem_pendentes}"
-            disabled="{ocupado}"
-          />
-        </row>
-
-        <column class="lista" if="{aud_tem_achados}" equals="true">
+      <!-- ── o que a conferência de repetições corrigiu ──────────────── -->
+      <!-- A conferência roda sozinha junto com o esboço: o mesmo assunto
+        planejado em dois capítulos é um defeito do plano, não uma opinião —
+        e um defeito que ninguém clicou para procurar continua lá. O que
+        sobra para a tela é discordar, linha a linha. -->
+      <column class="painel" if="{aud_tem_achados}" equals="true">
+        <text class="rotulo">{aud_rotulo}</text>
+        <text class="ajuda">
+          O foco de cada trecho abaixo foi reescrito para usar o assunto em vez
+          de reensiná-lo. Discordou? Desfaça — ou edite o foco à mão no capítulo.
+        </text>
+        <column class="lista">
           <row class="faixa linha" for-each="aud_ui" var="a">
             <column class="dupla">
               <text class="corpo">{a.assunto}</text>
@@ -145,7 +122,7 @@
             <button
               class="btn-sutil"
               text="{a.rotulo}"
-              on_click="aplicar_achado:{a.n}"
+              on_click="desfazer_achado:{a.n}"
               disabled="{ocupado}"
             />
           </row>

@@ -884,44 +884,45 @@ fn simular_revisao(motor: &mut GlacierUI) -> u8 {
 
     // ── a auditoria de sobreposição ───────────────────────────────────────
     //
-    // A chamada em si não roda aqui (é rede); o que se prova é o que ela
-    // produz sendo APLICADO — e sobretudo a recusa quando o plano mudou desde
-    // a conferência. Reescrever o foco do subcapítulo errado não daria erro
-    // nenhum: apareceria como um trecho fora de lugar na obra pronta.
+    // A conferência roda sozinha junto com o esboço, e a chamada em si é rede
+    // — não roda aqui. O que se prova é o DESFAZER, e sobretudo a recusa
+    // quando o plano mudou desde a conferência: repor o foco antigo no
+    // subcapítulo errado não daria erro nenhum, apareceria só como um trecho
+    // fora de lugar na obra pronta.
     const ESBOCO_AUD: &str = r#"{"titulo":"O","resumo":"r","publico":"p",
         "capitulos":[
           {"titulo":"Fundamentos","resumo":"",
-           "subcapitulos":[{"titulo":"Visão geral de X","foco":"ensina X do zero"}]},
+           "subcapitulos":[{"titulo":"Visão geral de X","foco":"NÃO ensine X aqui; aponte o capítulo 2."}]},
           {"titulo":"X a fundo","resumo":"",
            "subcapitulos":[{"titulo":"X por dentro","foco":"ensina X"}]}
         ]}"#;
     const ACHADO: &str = r#"[{"cap":1,"sub":1,"cap_titulo":"Fundamentos",
         "sub_titulo":"Visão geral de X","assunto":"X","dono":"2.1",
-        "motivo":"o capítulo 2 é dedicado a X","aplicado":false,
-        "foco_novo":"NÃO ensine X aqui; assuma-o e aponte o capítulo 2."}]"#;
+        "motivo":"o capítulo 2 é dedicado a X","aplicado":true,
+        "foco_antigo":"ensina X do zero",
+        "foco_novo":"NÃO ensine X aqui; aponte o capítulo 2."}]"#;
 
     motor.set_initial_screen("revisao");
     motor.define_data("esboco_json", ESBOCO_AUD);
     motor.define_data("auditoria_json", ACHADO);
-    motor.define_data("auditoria_feita", "true");
     motor.define_data("tem_erro", "false");
-    let _ = motor.dispatch(&M::UiClick("aplicar_achado:1".into()));
 
-    let esb = motor.get_data("esboco_json").cloned().unwrap_or_default();
-    if !esb.contains("aponte o capítulo 2") {
-        eprintln!("✗ aplicar a correção não trocou o foco do repetidor: {esb}");
-        falhas += 1;
-    }
-    if esb.contains("ensina X do zero") {
-        eprintln!("✗ o foco antigo sobreviveu à correção: {esb}");
-        falhas += 1;
-    }
-    falhas += verificar(motor, "tem_erro", "false", "aplicar um achado válido não gera erro");
+    // A correção aplicada aparece na tela, com o botão para discordar dela.
+    let _ = motor.dispatch(&M::UiClick("selecionar_capitulo:1".into()));
     let aud = motor.get_data("aud_ui").cloned().unwrap_or_default();
-    if !aud.contains("aplicado") {
-        eprintln!("✗ o achado aplicado não ficou marcado na tela: {aud}");
+    if !aud.contains("desfazer") || !aud.contains("dono: 2.1") {
+        eprintln!("✗ a correção aplicada não aparece na tela: {aud}");
         falhas += 1;
     }
+
+    // Desfazer repõe o foco original.
+    let _ = motor.dispatch(&M::UiClick("desfazer_achado:1".into()));
+    let esb = motor.get_data("esboco_json").cloned().unwrap_or_default();
+    if !esb.contains("ensina X do zero") {
+        eprintln!("✗ desfazer não repôs o foco original: {esb}");
+        falhas += 1;
+    }
+    falhas += verificar(motor, "tem_erro", "false", "desfazer um achado válido não gera erro");
 
     // Agora com o plano mexido: o subcapítulo 1.1 já não é o mesmo.
     motor.define_data(
@@ -930,11 +931,11 @@ fn simular_revisao(motor: &mut GlacierUI) -> u8 {
     );
     motor.define_data("auditoria_json", ACHADO);
     motor.define_data("tem_erro", "false");
-    let _ = motor.dispatch(&M::UiClick("aplicar_achado:1".into()));
+    let _ = motor.dispatch(&M::UiClick("desfazer_achado:1".into()));
 
     let esb2 = motor.get_data("esboco_json").cloned().unwrap_or_default();
-    if esb2.contains("aponte o capítulo 2") {
-        eprintln!("✗ a correção foi aplicada no subcapítulo ERRADO: {esb2}");
+    if esb2.contains("ensina X do zero") {
+        eprintln!("✗ desfazer mexeu no subcapítulo ERRADO: {esb2}");
         falhas += 1;
     }
     falhas += verificar(motor, "tem_erro", "true", "índice velho é recusado com aviso");
