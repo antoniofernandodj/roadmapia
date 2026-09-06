@@ -13,6 +13,7 @@
 -- então reordenar, renomear, apagar e inserir aqui é sempre seguro.
 
 local Rascunho = require("lib/rascunho")
+local A = require("lib/avaliacao")
 
 local R = {}
 
@@ -197,8 +198,31 @@ end
 --- tecla dentro de um campo não chama isto (veria `livre_mudou` em
 --- `perguntas.luau`: reprojetar a cada tecla recriaria o editor e o cursor
 --- pularia para o fim).
+--- Quantos trechos tem cada capítulo do esboço. É a forma REAL da obra — a
+--- que a conta de exercícios e prova precisa. Na tela inicial ela ainda não
+--- existe e a estimativa usa a forma padrão; aqui já dá para ser exato (o
+--- modelo pode ter devolvido 8 capítulos em vez de 10, e isso muda a conta).
+function R.forma(e: any): { number }
+    local saida = {}
+    if e == nil or type(e.capitulos) ~= "table" then
+        return saida
+    end
+    for _, c in ipairs(e.capitulos) do
+        local subs = (type(c.subcapitulos) == "table") and #c.subcapitulos or 0
+        table.insert(saida, subs)
+    end
+    return saida
+end
+
 function R.projetar()
     local e = R.esboco()
+    -- Amarrado aqui, e não em cada handler da tela, pelo mesmo motivo que
+    -- `O.gravar_plano` projeta junto: acrescentar um subcapítulo muda o número
+    -- de lotes, e esquecer de recalcular deixaria a tela mostrando a conta do
+    -- esboço anterior. Amarrando, esquecer deixa de ser possível.
+    if e ~= nil then
+        A.projetar(R.forma(e), ctx.tipo)
+    end
     if e == nil then
         ctx.rev_tem_esboco = "false"
         ctx.rev_titulo = ""

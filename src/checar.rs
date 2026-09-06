@@ -49,6 +49,7 @@ pub fn checar() -> std::process::ExitCode {
     falhas += checar_config_ini();
 
     falhas += rodar_suites_luau();
+    falhas += simular_exercicios_e_prova(&mut motor);
     falhas += simular_entrevista(&mut motor);
     falhas += simular_revisao(&mut motor);
     falhas += simular_producao(&mut motor);
@@ -447,6 +448,16 @@ fn checar_alinhamento_dos_botoes(motor: &mut GlacierUI) -> u8 {
     motor.define_data("sem_falhas", "false");
     motor.define_data("sem_perguntas", "false");
     motor.define_data("mostrar_avancado", "true");
+    // O painel de exercícios/prova vive sob `if="{tipo_curso}"` (em `inicio`) e
+    // `if="{tipo_e_curso}"` (em `revisao`), e as linhas dos campos sob os dois
+    // interruptores. Sem semear tudo isto, os blocos são podados e este
+    // checador nunca percorre as filas que eles contêm — a mesma armadilha
+    // documentada logo abaixo para `rev_capitulos_ui`.
+    motor.define_data("tipo_curso", "true");
+    motor.define_data("tipo_e_curso", "true");
+    motor.define_data("quer_exercicios", "true");
+    motor.define_data("quer_prova", "true");
+    motor.define_data("tem_prova", "true");
     // A tela `revisao`: sem isto o painel de edição do capítulo (se-lecionado
     // via `c.selecionado` dentro do `for-each`) fica podado, e a fila de
     // botões que ele contém nunca é percorrida por este checador.
@@ -536,6 +547,115 @@ fn checar_binding_de_visibilidade(motor: &mut GlacierUI) -> u8 {
          {visiveis_parado}/{total_parado}, com parado=false: {visiveis_ocupado}/{total_ocupado}"
     );
     1
+}
+
+/// O painel de exercícios e prova na tela inicial: ele só existe para "curso",
+/// e o campo de número não pode brigar com quem está digitando.
+///
+/// A aritmética que divide exercícios em lotes tem suíte própria
+/// (`tests/luau/avaliacao_casos.luau`); o que se prova aqui é a outra metade —
+/// que a TELA liga os dois interruptores ao contexto certo, que o painel
+/// aparece e some com o tipo, e que um número inválido não derruba nada.
+fn simular_exercicios_e_prova(motor: &mut GlacierUI) -> u8 {
+    use glacier_ui::EngineMessage as M;
+    use glacier_ui::parser::{NodeType, UiNode};
+    let mut falhas = 0u8;
+
+    /// O painel está visível? Procura o rótulo dele entre os textos não
+    /// podados da tela inicial.
+    fn painel_visivel(motor: &mut GlacierUI) -> bool {
+        fn anda(no: &UiNode, achou: &mut bool) {
+            if let NodeType::Text { content, .. } = &no.kind
+                && content.contains("EXERCÍCIOS E PROVA")
+            {
+                *achou = true;
+            }
+            for f in &no.children {
+                anda(f, achou);
+            }
+        }
+        let mut achou = false;
+        let _ = motor.reevaluate_all();
+        if let Ok(raiz) = motor.evaluated("inicio") {
+            anda(raiz, &mut achou);
+        }
+        achou
+    }
+
+    motor.set_initial_screen("inicio");
+    let _ = motor.dispatch(&M::UiClick("escolher_tipo:curso".into()));
+
+    let verificar = |motor: &GlacierUI, chave: &str, esperado: &str, oque: &str| {
+        let obtido = motor.get_data(chave).cloned().unwrap_or_default();
+        if obtido != esperado {
+            eprintln!("✗ {oque}: {chave} = {obtido:?}, esperava {esperado:?}");
+            return 1;
+        }
+        0
+    };
+
+    if !painel_visivel(motor) {
+        eprintln!("✗ o painel de exercícios não aparece com 'curso' marcado");
+        falhas += 1;
+    }
+
+    // A conta aparece antes de custar — é a cultura da amostra em `producao`.
+    // Obra padrão (10 × 20) com os padrões: 20 lotes + 4 partes = 24 chamadas.
+    let aviso = motor.get_data("aviso_avaliacao").cloned().unwrap_or_default();
+    if !aviso.contains("24 chamadas") || !aviso.contains('%') {
+        eprintln!("✗ o aviso de custo não diz o que vai custar: {aviso:?}");
+        falhas += 1;
+    }
+
+    // Guia não leva exercício nem prova, e o painel some.
+    let _ = motor.dispatch(&M::UiClick("escolher_tipo:guia".into()));
+    if painel_visivel(motor) {
+        eprintln!("✗ o painel de exercícios continua visível fora de 'curso'");
+        falhas += 1;
+    }
+    falhas += verificar(motor, "tipo_e_curso", "false", "fora de curso a projeção fica muda");
+
+    // …mas o que foi digitado sobrevive à ida e volta: quem marca "guia" por
+    // engano e volta não pode encontrar o campo zerado.
+    let _ = motor.dispatch(&M::UiClick("escolher_tipo:curso".into()));
+    let _ = motor.dispatch(&M::UiInputChanged {
+        action: "n_exercicios_mudou".into(),
+        value: "16".into(),
+    });
+    let _ = motor.dispatch(&M::UiClick("escolher_tipo:guia".into()));
+    let _ = motor.dispatch(&M::UiClick("escolher_tipo:curso".into()));
+    falhas += verificar(motor, "n_exercicios", "16", "trocar de tipo preserva o número digitado");
+
+    // O campo guarda o texto CRU. Escrever o valor saneado de volta a cada
+    // tecla brigaria com quem digita: apagar "16" para escrever "20" passa por
+    // "" e por "2", e o campo pularia debaixo do dedo.
+    let _ = motor.dispatch(&M::UiInputChanged {
+        action: "n_exercicios_mudou".into(),
+        value: "".into(),
+    });
+    falhas += verificar(motor, "n_exercicios", "", "o campo aceita ficar vazio enquanto se digita");
+
+    // E um valor impossível não derruba a tela nem some da vista: vira o aviso.
+    let _ = motor.dispatch(&M::UiInputChanged {
+        action: "n_questoes_mudou".into(),
+        value: "não é número".into(),
+    });
+    falhas += verificar(motor, "n_questoes", "não é número", "texto inválido fica no campo");
+    let aviso = motor.get_data("aviso_avaliacao").cloned().unwrap_or_default();
+    if aviso.is_empty() {
+        eprintln!("✗ com entrada inválida o aviso de custo sumiu em vez de cair no padrão");
+        falhas += 1;
+    }
+
+    // Desmarcar um não desliga o outro.
+    let _ = motor.dispatch(&M::UiClick("alternar_exercicios".into()));
+    falhas += verificar(motor, "quer_exercicios", "false", "desmarcar exercícios");
+    falhas += verificar(motor, "quer_prova", "true", "…não desliga a prova");
+
+    if falhas == 0 {
+        println!("✓ exercícios e prova (painel por tipo, campos, aviso de custo)");
+    }
+    falhas
 }
 
 /// Percorre a entrevista com um questionário de mentira, sem tocar na rede.
@@ -658,6 +778,12 @@ fn simular_revisao(motor: &mut GlacierUI) -> u8 {
     motor.define_data("esboco_slug_base", "teste");
     motor.define_data("tipo", "curso");
     motor.define_data("assunto", "teste");
+    // Explícito, e não herdado: `simular_exercicios_e_prova` roda antes e
+    // deixa o contexto no estado do último caso dele.
+    motor.define_data("quer_exercicios", "true");
+    motor.define_data("n_exercicios", "4");
+    motor.define_data("quer_prova", "true");
+    motor.define_data("n_questoes", "10");
     motor.set_initial_screen("revisao");
     // Seleciona o 1º capítulo: além de exercitar a seleção, força o script a
     // projetar o esboço no contexto — o `init` do componente já rodou no
@@ -725,6 +851,13 @@ fn simular_revisao(motor: &mut GlacierUI) -> u8 {
     falhas += verificar(motor, "tem_erro", "false", "confirmar um plano válido não gera erro");
     falhas += verificar(motor, "tem_obra", "true", "confirmar monta e grava o Plano");
     falhas += verificar(motor, "n_capitulos", "2", "…com os 2 capítulos do esboço");
+    // 3 trechos + 2 aberturas + 2 lotes de exercícios + 1 parte de prova.
+    falhas += verificar(motor, "total_tarefas", "8", "…e as tarefas de avaliação materializadas");
+    let plano_bruto = motor.get_data("obra_json").cloned().unwrap_or_default();
+    if !plano_bruto.contains("exercicios-01.md") || !plano_bruto.contains("prova/parte-01.md") {
+        eprintln!("✗ confirmar não materializou exercícios/prova no plano: {plano_bruto}");
+        falhas += 1;
+    }
 
     // Confirmar um plano incompleto (capítulo sem subcapítulo nenhum) barra
     // com uma mensagem — não monta um `Plano` com um capítulo a menos em
@@ -782,11 +915,15 @@ fn simular_producao(motor: &mut GlacierUI) -> u8 {
               {"titulo":"Primeiro","resumo":"a","dir":"saidas/teste/01-primeiro",
                "arquivo":"saidas/teste/01-primeiro/README.md","status":"pendente","erro":"",
                "subs":[{"titulo":"A","foco":"f","arquivo":"saidas/teste/01-primeiro/01-a.md","status":"pronto","erro":""},
-                       {"titulo":"B","foco":"f","arquivo":"saidas/teste/01-primeiro/02-b.md","status":"erro","erro":"500"}]},
+                       {"titulo":"B","foco":"f","arquivo":"saidas/teste/01-primeiro/02-b.md","status":"erro","erro":"500"}],
+               "exercicios":[{"arquivo":"saidas/teste/01-primeiro/exercicios-01.md","status":"pendente","erro":"","de":1,"ate":2,"n":5}]},
               {"titulo":"Segundo","resumo":"b","dir":"saidas/teste/02-segundo",
                "arquivo":"saidas/teste/02-segundo/README.md","status":"pendente","erro":"",
-               "subs":[{"titulo":"C","foco":"f","arquivo":"saidas/teste/02-segundo/01-c.md","status":"pendente","erro":""}]}
-            ]}"#,
+               "subs":[{"titulo":"C","foco":"f","arquivo":"saidas/teste/02-segundo/01-c.md","status":"pendente","erro":""}],
+               "exercicios":[{"arquivo":"saidas/teste/02-segundo/exercicios-01.md","status":"pendente","erro":"","de":1,"ate":1,"n":5}]}
+            ],
+            "avaliacao":{"exercicios_por_capitulo":5,"questoes_prova":10},
+            "prova":[{"arquivo":"saidas/teste/prova/parte-01.md","status":"pendente","erro":"","de":1,"ate":3,"n":10}]}"#,
     );
     motor.define_data("tipo", "curso");
     motor.set_initial_screen("producao");
@@ -802,17 +939,29 @@ fn simular_producao(motor: &mut GlacierUI) -> u8 {
         0
     };
 
-    // 3 trechos + 2 aberturas de capítulo = 5 tarefas; 1 pronta.
+    // 3 trechos + 2 aberturas + 2 lotes de exercícios + 1 parte de prova = 8.
     falhas += verificar(motor, "tem_obra", "true", "plano lido");
-    falhas += verificar(motor, "total_tarefas", "5", "aberturas contam como tarefa");
+    falhas += verificar(motor, "total_tarefas", "8", "exercícios e prova contam como tarefa");
     falhas += verificar(motor, "prontos", "1", "contagem de prontos");
     falhas += verificar(motor, "tem_erros", "true", "o trecho falho é visível");
     falhas += verificar(motor, "sem_falhas", "false", "o botão de refazer aparece");
-    falhas += verificar(motor, "pct", "20", "barra de avanço");
+    falhas += verificar(motor, "pct", "12", "barra de avanço");
 
     let caps = motor.get_data("capitulos_ui").cloned().unwrap_or_default();
     if !caps.contains("1/2 trechos") || !caps.contains("1 com erro") {
         eprintln!("✗ lista de capítulos não reflete o estado: {caps}");
+        falhas += 1;
+    }
+    if !caps.contains("exercícios 0/1") {
+        eprintln!("✗ a lista de capítulos não mostra o estado dos exercícios: {caps}");
+        falhas += 1;
+    }
+
+    // A prova tem linha própria: não pertence a capítulo nenhum.
+    falhas += verificar(motor, "tem_prova", "true", "a prova aparece na tela");
+    let prova = motor.get_data("prova_detalhe").cloned().unwrap_or_default();
+    if !prova.contains("0 de 1") || !prova.contains("10 questões") {
+        eprintln!("✗ o bloco da prova não reflete o estado: {prova}");
         falhas += 1;
     }
 

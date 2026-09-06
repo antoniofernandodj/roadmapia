@@ -68,6 +68,18 @@
       </column>
       <text class="marca" color="{c.cor}">{c.marca}</text>
       </row>
+
+      <!-- A prova não cabe na lista acima: ela não pertence a capítulo
+        nenhum, atravessa a obra inteira. Daí a linha própria, e sem número
+        de capítulo na coluna da esquerda. -->
+      <row class="faixa linha" if="{tem_prova}" equals="true">
+        <text class="contador num">★</text>
+        <column class="dupla">
+          <text class="corpo">Prova final</text>
+          <text class="nota">{prova_detalhe}</text>
+        </column>
+        <text class="marca" color="{prova_cor}">{prova_marca}</text>
+      </row>
     </column>
     </scrollable>
 

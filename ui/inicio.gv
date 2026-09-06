@@ -63,10 +63,58 @@
             </column>
           </column>
 
-          <!-- ── 3. o modelo ────────────────────────────────────────────────── -->
+          <!-- ── 3. exercícios e prova (só para curso) ──────────────────────── -->
+          <!-- Um curso sem exercício e sem avaliação é um livro com capa de
+            curso — e é o que o próprio rótulo do tipo promete. O painel só
+            aparece para "Curso": `A.config` zera a avaliação fora dele, então
+            marcar "guia" nunca produz um guia com prova. -->
+          <column class="painel" if="{tipo_curso}" equals="true">
+            <text class="rotulo">3 · EXERCÍCIOS E PROVA</text>
+            <column class="bloco">
+              <checkbox
+                label="Lista de exercícios ao fim de cada capítulo"
+                checked="quer_exercicios"
+                on_toggle="alternar_exercicios"
+              />
+              <row class="linha" if="{quer_exercicios}" equals="true">
+                <input
+                  class="campo-num"
+                  placeholder="10"
+                  value="n_exercicios"
+                  on_change="n_exercicios_mudou"
+                />
+                <text class="ajuda largo">exercícios por capítulo (até 40)</text>
+              </row>
+
+              <checkbox
+                label="Prova final da obra"
+                checked="quer_prova"
+                on_toggle="alternar_prova"
+              />
+              <row class="linha" if="{quer_prova}" equals="true">
+                <input
+                  class="campo-num"
+                  placeholder="40"
+                  value="n_questoes"
+                  on_change="n_questoes_mudou"
+                />
+                <text class="ajuda largo">questões na prova (até 120)</text>
+              </row>
+            </column>
+
+            <!-- A conta aparece ANTES de custar, como a amostra da produção. -->
+            <text class="nota" if="{tem_aviso_avaliacao}" equals="true">
+              {aviso_avaliacao}
+            </text>
+            <text class="erro" if="{tem_alerta_avaliacao}" equals="true">
+              {alerta_avaliacao}
+            </text>
+          </column>
+
+          <!-- ── 4. o modelo ────────────────────────────────────────────────── -->
           <column class="painel">
             <row class="linha">
-              <text class="rotulo largo">3 · MODELO E CHAVE</text>
+              <text class="rotulo largo">4 · MODELO E CHAVE</text>
               <button
                 class="btn-sutil"
                 text="{rotulo_avancado}"

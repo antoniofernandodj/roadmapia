@@ -12,12 +12,14 @@ local P = require("lib/prompts")
 local O = require("lib/obra")
 local R = require("lib/revisao")
 local Rascunho = require("lib/rascunho")
+local A = require("lib/avaliacao")
 local L = require("lib/log")
 
 -- Mesma forma da obra pedida em `perguntas.luau` — "gerar de novo" tem de
--- pedir um esboço do mesmo tamanho, não um menor por engano.
-local CAPITULOS = 10
-local SUBCAPITULOS = 20
+-- pedir um esboço do mesmo tamanho, não um menor por engano. Por isso vem de
+-- `lib/obra`, e não de uma constante local em cada tela.
+local CAPITULOS = O.CAPITULOS
+local SUBCAPITULOS = O.SUBCAPITULOS
 
 function init(): ()
     ctx.cap_sel = ctx.cap_sel or ""
@@ -150,6 +152,37 @@ function foco_sub_mudou(si, texto): ()
     end
 end
 
+-- ── exercícios e prova ──────────────────────────────────────────────────────
+--
+-- Os mesmos quatro campos da tela inicial, repetidos aqui de propósito: este é
+-- o último ponto antes de pagar, e é onde o tamanho REAL da obra é conhecido
+-- (o esboço pode ter voltado com 8 capítulos em vez de 10, e a pessoa pode ter
+-- apagado dois). `R.projetar` recalcula a conta, então cada tecla aqui e cada
+-- subcapítulo acrescentado atualizam o aviso de custo.
+
+function alternar_exercicios(): ()
+    ctx.quer_exercicios = (ctx.quer_exercicios == "true") and "false" or "true"
+    R.projetar()
+end
+
+function alternar_prova(): ()
+    ctx.quer_prova = (ctx.quer_prova == "true") and "false" or "true"
+    R.projetar()
+end
+
+--- Texto cru no contexto, saneamento só na leitura — ver o comentário longo em
+--- `inicio.luau`: escrever o valor saneado de volta a cada tecla brigaria com
+--- quem está digitando.
+function n_exercicios_mudou(texto): ()
+    ctx.n_exercicios = texto
+    R.projetar()
+end
+
+function n_questoes_mudou(texto): ()
+    ctx.n_questoes = texto
+    R.projetar()
+end
+
 -- ── gerar de novo / confirmar ────────────────────────────────────────────────
 
 --- Pede outro esboço do zero (mesma chamada de `perguntas.luau:gerar()`),
@@ -206,10 +239,14 @@ function confirmar(): ()
         return
     end
 
+    -- `A.config` é quem decide que roadmap e guia não levam avaliação — a
+    -- tela só mostra ou esconde o painel. Assim, marcar "guia" depois de
+    -- configurar exercícios não produz um guia com prova.
     local plano, erro_montar = O.montar(
         e,
         ctx.esboco_slug_base or O.slug(ctx.assunto or "obra"),
-        ctx.observacoes
+        ctx.observacoes,
+        A.config(ctx.tipo)
     )
     if plano == nil then
         E.erro(erro_montar)

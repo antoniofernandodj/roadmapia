@@ -15,11 +15,10 @@ local L = require("lib/log")
 
 local PERGUNTAS_POR_APROFUNDAMENTO = 4
 
--- A forma da obra. 10 × 20 = 200 trechos de ~1.200 palavras dão um livro de
--- verdade (~240 mil palavras), que é o ponto: material para aprender, não uma
--- ementa. Mexer aqui muda o tamanho — e a conta — de tudo.
-local CAPITULOS = 10
-local SUBCAPITULOS = 20
+-- A forma da obra vem de `lib/obra`: três telas precisam dela, e uma cópia
+-- local que divergisse pediria um esboço menor por engano.
+local CAPITULOS = O.CAPITULOS
+local SUBCAPITULOS = O.SUBCAPITULOS
 
 function init(): ()
     E.set_indice(E.indice())

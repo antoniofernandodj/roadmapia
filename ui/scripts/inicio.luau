@@ -8,6 +8,8 @@ local OR = require("lib/openrouter")
 local E = require("lib/entrevista")
 local P = require("lib/prompts")
 local R = require("lib/revisao")
+local A = require("lib/avaliacao")
+local O = require("lib/obra")
 local Rascunho = require("lib/rascunho")
 local L = require("lib/log")
 
@@ -59,6 +61,7 @@ function init(): ()
 
     ctx.mostrar_avancado = ctx.mostrar_avancado or "false"
     ctx.q_idx = ctx.q_idx or "1"
+    A.aplicar_padroes()
     ctx.status = ""
     E.erro(nil)
     refletir()
@@ -92,6 +95,40 @@ end
 --- desmarcar o tipo ativo deixaria o app sem tipo nenhum).
 function escolher_tipo(tipo): ()
     aplicar_tipo(tipo)
+    refletir()
+end
+
+-- ── exercícios e prova (só aparecem em "curso") ─────────────────────────────
+--
+-- Os quatro valores moram no contexto e são lidos por `A.config` na hora de
+-- montar o plano. Trocar de tipo não os apaga: quem marca "guia" por engano e
+-- volta encontra o que tinha digitado (é `A.config` que zera a avaliação fora
+-- de curso, não a tela).
+
+function alternar_exercicios(): ()
+    ctx.quer_exercicios = (ctx.quer_exercicios == "true") and "false" or "true"
+    refletir()
+end
+
+function alternar_prova(): ()
+    ctx.quer_prova = (ctx.quer_prova == "true") and "false" or "true"
+    refletir()
+end
+
+--- A cada tecla no campo de número.
+---
+--- Guarda o texto CRU e sanea só na leitura (`A.config`). Escrever o valor
+--- saneado de volta aqui brigaria com quem está digitando: apagar "10" para
+--- escrever "20" passa por "" — que vira o padrão — e "1", e o campo ficaria
+--- pulando debaixo do dedo. O que a conta vai usar de verdade aparece no aviso
+--- logo abaixo, então o saneamento nunca age escondido.
+function n_exercicios_mudou(texto): ()
+    ctx.n_exercicios = texto
+    refletir()
+end
+
+function n_questoes_mudou(texto): ()
+    ctx.n_questoes = texto
     refletir()
 end
 
@@ -230,6 +267,14 @@ function refletir(): ()
     -- De onde a chave veio. As duas origens são indistinguíveis no campo, e
     -- descobrir "por que ele está usando a chave errada?" sem esta linha custa
     -- caro. O caminho do arquivo entra inteiro: é o que a pessoa vai editar.
+    -- O aviso de custo dos exercícios/prova. A obra ainda não existe, então a
+    -- estimativa usa a forma padrão que `perguntas.luau` vai pedir.
+    local forma = {}
+    for _ = 1, O.CAPITULOS do
+        table.insert(forma, O.SUBCAPITULOS)
+    end
+    A.projetar(forma, ctx.tipo)
+
     local origem = ctx.api_key_origem or ""
     if origem == "ini" then
         ctx.nota_chave = "Gravada em " .. (ctx.config_arquivo or "config.ini") .. "."

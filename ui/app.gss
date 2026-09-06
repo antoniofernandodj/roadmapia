@@ -72,6 +72,12 @@
 /* Alturas das áreas de texto: a resposta livre pede espaço para um parágrafo;
    os resumos são de uma ou duas linhas. */
 .campo-alto    { height: 110; }
+/* Campo de número (quantos exercícios, quantas questões): estreito, para não
+   sugerir que cabe um texto. Classe própria em vez de `.campo campo-num`
+   porque nenhuma outra sobrepõe uma propriedade que `.campo` já define, e
+   este seria o primeiro caso a depender dessa ordem. */
+.campo-num       { width: 90; padding: 12; size: 14; }
+.campo-num:focus { border-color: #89B4FA; }
 .campo-resumo  { height: 60; }
 
 /* O padding VERTICAL é 12 em todas as variantes, e a altura é fixa: numa mesma

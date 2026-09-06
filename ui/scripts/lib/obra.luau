@@ -132,6 +132,18 @@ export type Contagem = {
     fazendo: number,
 }
 
+-- A forma da obra. 10 × 20 = 200 trechos de ~1.200 palavras dão um livro de
+-- verdade (~240 mil palavras), que é o ponto: material para aprender, não uma
+-- ementa. Mexer aqui muda o tamanho — e a conta — de tudo.
+--
+-- Moram aqui porque TRÊS telas precisam deles: `perguntas` (que pede o
+-- esboço), `revisao` (que pede outro, e tem de pedir do mesmo tamanho — o
+-- comentário lá já avisava disso) e `inicio` (que estima o custo dos
+-- exercícios antes de a obra existir). Eram duas cópias e viravam três; a
+-- terceira divergir seria um esboço menor por engano, sem erro nenhum.
+O.CAPITULOS = 10
+O.SUBCAPITULOS = 20
+
 O.PENDENTE = "pendente"
 O.FAZENDO = "fazendo"
 O.PRONTO = "pronto"

@@ -56,6 +56,51 @@
         />
       </column>
 
+      <!-- ── exercícios e prova (só para curso) ───────────────────────── -->
+      <!-- Repetido da tela inicial de propósito: este é o último ponto antes
+        de pagar, e o único em que o tamanho real da obra já é conhecido. -->
+      <column class="painel" if="{tipo_e_curso}" equals="true">
+        <text class="rotulo">EXERCÍCIOS E PROVA</text>
+        <text class="nota">{resumo_avaliacao}</text>
+        <column class="bloco">
+          <checkbox
+            label="Lista de exercícios ao fim de cada capítulo"
+            checked="quer_exercicios"
+            on_toggle="alternar_exercicios"
+          />
+          <row class="linha" if="{quer_exercicios}" equals="true">
+            <input
+              class="campo-num"
+              placeholder="10"
+              value="n_exercicios"
+              on_change="n_exercicios_mudou"
+            />
+            <text class="ajuda largo">exercícios por capítulo (até 40)</text>
+          </row>
+
+          <checkbox
+            label="Prova final da obra"
+            checked="quer_prova"
+            on_toggle="alternar_prova"
+          />
+          <row class="linha" if="{quer_prova}" equals="true">
+            <input
+              class="campo-num"
+              placeholder="40"
+              value="n_questoes"
+              on_change="n_questoes_mudou"
+            />
+            <text class="ajuda largo">questões na prova (até 120)</text>
+          </row>
+        </column>
+        <text class="nota" if="{tem_aviso_avaliacao}" equals="true">
+          {aviso_avaliacao}
+        </text>
+        <text class="erro" if="{tem_alerta_avaliacao}" equals="true">
+          {alerta_avaliacao}
+        </text>
+      </column>
+
       <!-- ── os capítulos ────────────────────────────────────────────── -->
       <scrollable class="largo cresce" direction="vertical">
       <column class="bloco">
