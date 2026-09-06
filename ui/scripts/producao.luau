@@ -70,7 +70,7 @@ function produzir(): ()
     )
 
     -- 1) A amostra: um trecho de verdade, para medir preço e qualidade.
-    if (tonumber(ctx.trechos_pagos) or 0) == 0 then
+    if (tonumber(ctx.chamadas_pagas) or 0) == 0 then
         ativos = 1
         ctx.status = "Escrevendo um trecho de amostra, para medir custo e qualidade..."
         projetar()
@@ -88,7 +88,7 @@ function produzir(): ()
         ctx.status = ""
         projetar()
 
-        if (tonumber(ctx.trechos_pagos) or 0) == 0 then
+        if (tonumber(ctx.chamadas_pagas) or 0) == 0 then
             L.erro(
                 "producao",
                 "amostra falhou; produção não começou. erro=" .. tostring(ctx.erro)
@@ -110,18 +110,18 @@ function produzir(): ()
         finalizar()
         return
     end
-    local por_trecho = custo_por_trecho()
-    local estimado = por_trecho * faltam
+    local por_chamada = custo_por_chamada()
+    local estimado = por_chamada * faltam
 
     -- `confirm` suspende a corrotina como o `fetch`; o retorno é a escolha.
     local ok = confirm({
         title = "Produzir as " .. tostring(faltam) .. " tarefas restantes?",
         message = string.format(
-            "O trecho de amostra custou US$ %.4f. As %d restantes (%s) devem "
+            "A chamada de amostra custou US$ %.4f. As %d restantes (%s) devem "
                 .. "custar cerca de US$ %.2f no modelo %s.%s\n\n"
                 .. "Leia a amostra antes de decidir:\n%s\n\n"
                 .. "Dá para parar a qualquer momento — o que já foi escrito fica em disco.",
-            por_trecho, faltam, composicao(O.plano()), estimado, ctx.modelo or "",
+            por_chamada, faltam, composicao(O.plano()), estimado, ctx.modelo or "",
             ressalva_da_estimativa(O.plano()), ctx.amostra_arquivo or "?"
         ),
         confirm_label = string.format("Produzir (~US$ %.2f)", estimado),
@@ -190,11 +190,13 @@ function composicao(plano): string
     return table.concat(pedacos, ", ")
 end
 
---- A honestidade da conta. A amostra medida é sempre um TRECHO (as outras
---- tarefas dependem dos trechos, então nunca são a primeira da fila), e um
+--- A honestidade da conta. A estimativa multiplica o custo médio já medido
+--- pelo número de tarefas que faltam, e as tarefas não custam todas igual: um
 --- lote de exercícios ou uma parte de prova rende menos tokens que um trecho.
---- A estimativa erra para CIMA, que é o lado certo de errar numa tela que pede
---- autorização para gastar — mas quem autoriza tem de saber disso.
+--- Numa produção começando do zero a amostra é sempre um trecho (as outras
+--- tarefas dependem dos trechos), então o erro é para CIMA — o lado certo de
+--- errar numa tela que pede autorização para gastar. Mas quem autoriza tem de
+--- saber que a conta é uma extrapolação, não uma soma.
 function ressalva_da_estimativa(plano): string
     if plano == nil then
         return ""
@@ -206,15 +208,19 @@ function ressalva_da_estimativa(plano): string
     if extras == 0 then
         return ""
     end
-    return "\n\nA conta usa o custo do trecho de amostra para tudo; exercícios e"
-        .. " prova costumam sair mais baratos, então o número acima tende a"
-        .. " ficar um pouco acima do real."
+    return "\n\nA conta extrapola de uma chamada medida para todas. Exercícios e"
+        .. " prova costumam sair mais baratos que um trecho, então o número"
+        .. " acima tende a ficar um pouco acima do real."
 end
 
---- Custo médio já medido por trecho. Só é chamada depois da amostra, então o
+--- Custo médio das chamadas já pagas. Só é usada depois da amostra, então o
 --- divisor nunca é zero.
-function custo_por_trecho(): number
-    local pagos = math.max(tonumber(ctx.trechos_pagos) or 0, 1)
+---
+--- Era `custo_por_trecho`, e o nome deixou de ser verdade quando exercícios e
+--- prova viraram tarefas: a média passa a incluir chamadas de tipos
+--- diferentes. Ver `ressalva_da_estimativa` sobre o que isso faz com a conta.
+function custo_por_chamada(): number
+    local pagos = math.max(tonumber(ctx.chamadas_pagas) or 0, 1)
     return (tonumber(ctx.custo_total) or 0) / pagos
 end
 
@@ -358,7 +364,7 @@ function chamar(tarefa, sistema, prompt): (boolean, string?)
             end
             O.gravar_sumario()
             -- Contabiliza a chamada paga: é o divisor da estimativa de custo.
-            ctx.trechos_pagos = tostring((tonumber(ctx.trechos_pagos) or 0) + 1)
+            ctx.chamadas_pagas = tostring((tonumber(ctx.chamadas_pagas) or 0) + 1)
             if (ctx.amostra_arquivo or "") == "" then
                 ctx.amostra_arquivo = arquivo_da(tarefa)
             end
@@ -510,7 +516,7 @@ function projetar(): ()
     if custo > 0 and c ~= nil then
         ctx.rotulo_custo = string.format("US$ %.3f gastos", custo)
         -- Extrapolação honesta: o custo por trecho já medido vezes o que falta.
-        local pagos = math.max(tonumber(ctx.trechos_pagos) or 0, 1)
+        local pagos = math.max(tonumber(ctx.chamadas_pagas) or 0, 1)
         if c.prontos < c.total then
             ctx.rotulo_custo = ctx.rotulo_custo
                 .. string.format("  (~US$ %.2f no total)", (custo / pagos) * c.total)

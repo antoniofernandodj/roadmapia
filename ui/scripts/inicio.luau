@@ -202,7 +202,7 @@ function refinar(): ()
     ctx.cap_sel = ""
     Rascunho.limpar()
     ctx.custo_total = "0"
-    ctx.trechos_pagos = "0"
+    ctx.chamadas_pagas = "0"
     ctx.amostra_arquivo = ""
     refletir()
     navigate("perguntas")
