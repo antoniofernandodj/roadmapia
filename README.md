@@ -170,6 +170,59 @@ Sai barato porque a unidade é o lote, não o exercício: 100 exercícios e 40
 questões cabem em 24 chamadas a mais, **cerca de +11%** sobre uma obra de 210.
 O painel diz esse número antes de qualquer coisa ser cobrada.
 
+## A repetição entre capítulos
+
+Numa obra examinada — um roadmap sobre memória em Rust — `unsafe` era ensinado
+do zero no capítulo 7 depois de já ter sido ensinado no 1 e no 2. Doze dos
+vinte trechos do capítulo "Fundamentos" eram trailers de capítulos posteriores.
+Cerca de um terço da obra foi escrito, e pago, duas vezes.
+
+A sobreposição LITERAL era quase zero: cada texto saiu do zero, com exemplos
+próprios. A repetição é conceitual, e por isso não aparece num diff.
+
+Havia duas causas, e elas pedem correções diferentes:
+
+**No plano.** Pedir "EXATAMENTE 10 capítulos × 20 subcapítulos" dá 200 vagas
+que precisam ser preenchidas. Quando o assunto não tem 200 unidades distintas
+nessa forma, o modelo enche as vagas do primeiro capítulo com o índice do resto
+da obra. O botão **"Conferir repetições"**, na tela de revisão, gasta uma
+chamada para ler o plano inteiro e devolver, para cada assunto ensinado em dois
+lugares, qual é o dono e o foco corrigido dos outros. A regra que decide o dono
+é o que importa: é onde o assunto é tratado a fundo, **não** quem o menciona
+primeiro — senão a correção proibiria um capítulo dedicado de ensinar o próprio
+tema.
+
+**Na produção.** Foi medido, simulando 10 × 20 com os 6 workers reais: quando o
+trecho 7.1 era escrito, ZERO dos seis capítulos anteriores tinha síntese de
+verdade, e o bloco "já foi ensinado antes" que ele recebia tinha **500
+caracteres** — para uma obra que passa de 200 mil palavras. A abertura do
+capítulo, que é quem produz `cap.sintese`, só saía no passo 125 de 210.
+
+Duas correções, nenhuma custando chamada:
+
+1. a abertura passou a ser despachada assim que o capítulo fecha (a dependência
+   não mudou, só a prioridade);
+2. cada trecho passou a devolver, junto com a síntese, a lista dos conceitos
+   que **definiu**:
+
+   ```
+   <!--CONCEITOS-->ponteiros brutos; unsafe<!--/CONCEITOS-->
+   ```
+
+   Ela se acumula no plano e volta, com o endereço do dono, para todo trecho de
+   outro capítulo — que é instruído a usar e citar, mas não redefinir. O
+   contexto que um trecho recebe sobre o resto da obra passou de 500 para
+   **5.702 caracteres**, e agora cresce com a obra em vez de encolher.
+
+De graça, sai o placar: quando um trecho declara definir algo que outro capítulo
+já definiu, a colisão vira uma linha na tela de produção, com quem era o dono.
+Sem número, "a repetição diminuiu" seria uma impressão.
+
+A comparação entre conceitos é por slug, então "unsafe" e "código unsafe"
+passam como dois. O registro erra para menos — deixa passar repetição, nunca
+inventa uma —, que é o lado certo de errar num sinal que se lê como "isto está
+duplicado".
+
 ## Compilar e empacotar
 
 `make help` lista tudo. Os que importam:
@@ -240,7 +293,7 @@ cat /tmp/pool.txt   # espera: feitos=6 … sobrou=0
 
 Um comando só, sem dependências externas. `--check` registra as três telas num
 motor descartável (sem abrir janela), renderiza cada uma, roda as **suítes Luau**
-(`tests/luau/`, 200 casos) e então **executa as ações**: marca e desmarca opções,
+(`tests/luau/`, 231 casos) e então **executa as ações**: marca e desmarca opções,
 escreve no campo livre, navega, provoca um erro, lê um plano semeado, refaz
 falhas. Sai com o número de falhas.
 

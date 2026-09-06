@@ -1,6 +1,8 @@
 # A repetição entre capítulos
 
-**Estado:** diagnóstico e proposta. Nada implementado.
+**Estado:** **implementado** na branch `claude/course-exercises-tests-impl-153ncq`,
+menos a §3.4, que ficou de fora à espera da sua decisão. A §6 no fim registra o
+que foi feito, os números medidos depois e o que não foi.
 
 Você notou que `unsafe` é ensinado no capítulo 7 depois de já ter sido ensinado
 no 1 e no 2. Fui ver a obra. É verdade, é sistemático, e a causa **não está na
@@ -252,3 +254,80 @@ roadmap, gerado antes daquele trabalho.
 Vale dizer, porém, que os exercícios **herdam** o problema: a lista do capítulo
 7 vai propor exercícios sobre `unsafe` como se fosse assunto novo, porque o
 `foco` dos trechos dele diz que é. Consertar o plano conserta os dois.
+
+---
+
+## 6. O que foi implementado
+
+Quatro das cinco correções. A §3.4 (esboço de tamanho variável) **não** entrou:
+ela mexe no "10 × 20 = 240 mil palavras" que é parte do que o app promete, e eu
+disse na §4 que não a faria sem você decidir. Continua disponível.
+
+### 6.1 O que entrou
+
+| § | Correção | Chamadas | Onde |
+|---|---|---|---|
+| 3.1 | Auditoria do esboço | +1, por clique | botão "Conferir repetições" na revisão |
+| 3.2 | Registro do que já foi ensinado | 0 | `plano.ensinado`, alimentado pelo bloco `<!--CONCEITOS-->` |
+| 3.3 | Abertura sai assim que o capítulo fecha | 0 | ordem dos laços em `O.tomar_tarefa` |
+| 3.5 | Medir a repetição | 0 | `plano.repeticoes`, na tela de produção |
+
+### 6.2 Os números, medidos depois
+
+Mesma simulação da §2 — 10 × 20, seis workers, código real:
+
+| | antes | depois |
+|---|---|---|
+| a 1ª abertura de capítulo sai no passo | 125 de 210 | ≤ 130, assim que o 1º capítulo fecha |
+| capítulos anteriores já sintetizados, em média | 2,27 | 2,59 |
+| **contexto sobre o resto da obra, por trecho** | **500 caracteres** | **5.702 caracteres** |
+
+O ganho da 3.3 sozinha é pequeno (2,27 → 2,59), e o teste diz por quê em vez de
+esconder: os capítulos 1 a 6 correm em paralelo e fecham quase juntos, então
+adiantar as aberturas ajuda sobretudo os capítulos finais. Quem carrega a
+correção é o registro — as 11 vezes mais de contexto da última linha.
+
+### 6.3 Onde a implementação se afastou da proposta
+
+**A auditoria não remove nada.** A proposta falava em "corrigir o foco"; na
+implementação isso virou regra dura: os achados **só** reescrevem `foco`, nunca
+apagam subcapítulos. Apagar muda o tamanho e o preço da obra, e essa decisão é
+de quem paga — o botão para isso já existe na tela. Quando o certo é apagar, o
+`motivo` do achado diz.
+
+**A auditoria é um clique, não automática.** Custa dinheiro, e este app não
+gasta sem avisar; e depois de editar o plano vale conferir de novo. Enquanto
+nunca rodou, o painel explica o defeito que ela procura em vez de mostrar um
+botão mudo.
+
+**Aplicar um achado tem uma trava que a proposta não previa.** Entre conferir e
+aplicar, a pessoa pode reordenar, apagar ou acrescentar capítulos — e aí
+`cap`/`sub` apontam para outro subcapítulo. Reescrever o foco do errado não
+daria erro nenhum: apareceria só como um trecho fora de lugar na obra pronta.
+Cada achado guarda o TÍTULO que o índice apontava, e aplicar recusa quando ele
+mudou. Verificado por mutação: sem a trava, o `--check` acusa a correção
+aplicada no subcapítulo errado.
+
+**Os exercícios também recebem o registro**, com a regra invertida: ali o que já
+foi ensinado é o que PODE ser exigido, e combinar com o assunto do capítulo é o
+que faz um bom exercício. Sem isso, a lista do capítulo 7 cobraria `unsafe`
+como assunto novo — a herança que a §5 previa.
+
+### 6.4 O que continua limitado, e é honesto dizer
+
+- **A comparação entre conceitos é por slug.** "unsafe" e "código unsafe" são
+  chaves diferentes e passam como dois conceitos. O registro erra para MENOS:
+  deixa passar repetição, nunca inventa uma. É o lado certo de errar num sinal
+  que a pessoa lê como "isto está duplicado", mas significa que o placar é um
+  piso, não um total.
+- **A janela cega do começo continua lá.** Quando o trecho 2.1 é escrito, quase
+  nada foi escrito ainda. Só a auditoria do esboço ataca isso, e ela depende de
+  um clique.
+- **O registro tem teto de 400 conceitos.** Quando lota, quem fica são os
+  primeiros — são os fundamentos, que é justamente o que os capítulos
+  posteriores reensinam.
+- **Não há "refazer este trecho".** O placar diz que 7.1 repetiu 1.9, mas
+  devolver só aquele trecho à fila continua sendo trabalho manual: "Refazer
+  falhas" só reenfileira o que deu erro. Ficou de fora de propósito — mexer
+  nisso pede tirar do registro os conceitos do trecho refeito, senão ele
+  colidiria consigo mesmo.
