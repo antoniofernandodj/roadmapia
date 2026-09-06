@@ -338,6 +338,27 @@ function O.tomar_tarefa(): Tarefa?
         return nil
     end
 
+    -- A abertura vem ANTES dos trechos na ordem de despacho — não na ordem de
+    -- dependência, que não mudou: ela continua exigindo o capítulo inteiro
+    -- resolvido, então nunca rouba a vez de um trecho que ainda falta.
+    --
+    -- Estava depois, e o custo disso foi medido: numa obra de 10 × 20, a
+    -- PRIMEIRA abertura só saía no passo 125 de 210, porque o laço dos trechos
+    -- sempre achava algo para fazer em algum capítulo. Como `cap.sintese` É o
+    -- texto da abertura, ela não existia durante quase toda a produção, e o
+    -- "já foi ensinado antes" que `O.vizinhanca` monta para um trecho de um
+    -- capítulo posterior caía no `resumo` PLANEJADO — uma frase escrita antes
+    -- de qualquer conteúdo existir. Trocar a ordem faz a abertura sair assim
+    -- que o capítulo fecha, e os capítulos seguintes passam a receber o resumo
+    -- do que foi ESCRITO. Ver `tests/luau/fila.luau`, seção 9.
+    for ci, cap in ipairs(plano.capitulos) do
+        if cap.status == O.PENDENTE and O.capitulo_completo(cap) then
+            cap.status = O.FAZENDO
+            O.gravar_plano(plano)
+            return { tipo = "abertura", cap = ci }
+        end
+    end
+
     for ci, cap in ipairs(plano.capitulos) do
         for si, sub in ipairs(cap.subs) do
             if sub.status ~= O.PRONTO and sub.status ~= O.ERRO then
@@ -352,14 +373,6 @@ function O.tomar_tarefa(): Tarefa?
                 end
                 break
             end
-        end
-    end
-
-    for ci, cap in ipairs(plano.capitulos) do
-        if cap.status == O.PENDENTE and O.capitulo_completo(cap) then
-            cap.status = O.FAZENDO
-            O.gravar_plano(plano)
-            return { tipo = "abertura", cap = ci }
         end
     end
 

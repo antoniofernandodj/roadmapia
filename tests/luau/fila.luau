@@ -617,6 +617,79 @@ function M.rodar()
     conferir(O.tomar_tarefa() ~= nil, "…e continua produzindo")
     conferir(ctx.tem_prova == "false", "…e a tela não anuncia prova nenhuma")
 
+    -- ── 9. quanto um trecho sabe do resto da obra ───────────────────────────────
+    --
+    -- A repetição entre capítulos (o `unsafe` ensinado do zero no capítulo 7
+    -- depois de já ter sido ensinado no 1 e no 2) tem duas causas, e esta é a
+    -- da PRODUÇÃO: um trecho de um capítulo posterior mal sabe o que os
+    -- anteriores ensinaram.
+    --
+    -- A causa era a ordem de despacho. A abertura do capítulo é quem produz
+    -- `cap.sintese`, e ela saía DEPOIS de todos os trechos de todos os
+    -- capítulos — no passo 125 de 210 numa obra de 10 × 20. Até lá,
+    -- `O.vizinhanca` caía no `resumo` planejado de cada capítulo: uma frase
+    -- escrita antes de qualquer conteúdo existir.
+    --
+    -- Isto mede, com o pool real de 6 workers, e trava o número. Sem a medida
+    -- a correção seria uma aposta sem placar.
+
+    O.gravar_plano(assert(O.montar(esboco(10, 20), "medida")))
+
+    local passo, primeira_abertura = 0, nil
+    local medidos, soma_com_sintese = 0, 0
+    local emvoo_m = {}
+    while true do
+        while #emvoo_m < 6 do
+            local t = O.tomar_tarefa()
+            if t == nil then
+                break
+            end
+            passo += 1
+            if t.tipo == "abertura" and primeira_abertura == nil then
+                primeira_abertura = passo
+            end
+            if t.tipo == "trecho" and t.cap > 1 then
+                local pl = O.plano()
+                for k = 1, t.cap - 1 do
+                    local sn = pl.capitulos[k].sintese
+                    if sn ~= nil and sn ~= "" then
+                        soma_com_sintese += 1
+                    end
+                end
+                medidos += 1
+            end
+            table.insert(emvoo_m, t)
+        end
+        if #emvoo_m == 0 then
+            break
+        end
+        local f = table.remove(emvoo_m, 1)
+        O.concluir(f, "corpo\n<!--SINTESE-->\n- ensinou algo\n<!--/SINTESE-->")
+    end
+
+    local total_m = O.contar(O.plano()).total
+    conferir(total_m == 210, "a obra de medida tem 210 tarefas", tostring(total_m))
+
+    -- Era 125 de 210. O primeiro capítulo fecha por volta do passo 120, e a
+    -- abertura dele tem de sair logo em seguida — não no fim da fila.
+    conferir(primeira_abertura ~= nil and primeira_abertura <= 130,
+        "a 1a abertura sai assim que o 1o capítulo fecha, não no fim da fila",
+        "passo " .. tostring(primeira_abertura) .. " de " .. tostring(total_m))
+
+    -- Quantos capítulos anteriores já tinham síntese REAL (não o resumo
+    -- planejado) quando cada trecho foi escrito. Era 2,27 com a ordem antiga.
+    --
+    -- O ganho da troca é modesto de propósito, e é honesto dizer por quê: os
+    -- capítulos 1 a 6 correm em paralelo e fecham quase juntos, então adiantar
+    -- as aberturas ajuda sobretudo os capítulos finais. A cegueira entre
+    -- capítulos escritos ao mesmo tempo é inerente ao paralelismo — quem a
+    -- ataca é o registro do que já foi ensinado (seção 10) e, na raiz, a
+    -- auditoria do esboço.
+    local media = soma_com_sintese / math.max(medidos, 1)
+    conferir(media > 2.5,
+        "um trecho encontra mais capítulos anteriores já sintetizados que antes",
+        string.format("%.2f (era 2,27)", media))
+
     write_file = write_file_real
     limpar_ctx()
 end
