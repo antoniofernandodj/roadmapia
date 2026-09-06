@@ -298,7 +298,7 @@ function executar(tarefa): (boolean, string?)
         return chamar(
             tarefa,
             P.SISTEMA_EXERCICIOS,
-            P.exercicios(plano, cap, dentro, fora, lote.n)
+            P.exercicios(plano, cap, dentro, fora, lote.n, O.ja_ensinado(plano, tarefa.cap))
         )
     end
 
@@ -324,7 +324,11 @@ function executar(tarefa): (boolean, string?)
             plano,
             cap,
             sub,
-            O.vizinhanca(plano, tarefa.cap, tarefa.sub)
+            O.vizinhanca(plano, tarefa.cap, tarefa.sub),
+            -- O que a obra já definiu FORA deste capítulo. Sem isto, o autor
+            -- de um trecho do capítulo 7 recebia meia página sobre os 120
+            -- trechos escritos antes dele e reensinava o assunto do zero.
+            O.ja_ensinado(plano, tarefa.cap)
         )
     end
 

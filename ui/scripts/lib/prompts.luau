@@ -242,7 +242,13 @@ Formato: comece direto no `## <título do trecho>`. Sem preâmbulo, sem
 --- O contexto em volta (obra, capítulo, vizinhos) é o que impede 200 chamadas
 --- independentes de virarem 200 textos que se repetem: cada autor sabe o que
 --- já foi ensinado antes dele e o que vem depois, e pode assumir/deixar.
-function P.secao(obra: Obra, capitulo: Capitulo, sub: Sub, ctx_vizinhos: Vizinhanca): string
+function P.secao(
+    obra: Obra,
+    capitulo: Capitulo,
+    sub: Sub,
+    ctx_vizinhos: Vizinhanca,
+    ensinado: string?
+): string
     local partes = {
         "Obra: **" .. obra.titulo .. "**",
         obra.resumo or "",
@@ -262,6 +268,24 @@ function P.secao(obra: Obra, capitulo: Capitulo, sub: Sub, ctx_vizinhos: Vizinha
         table.insert(partes, "Já foi ensinado antes deste trecho (ASSUMA como conhecido,")
         table.insert(partes, "não reintroduza, mas pode referenciar):")
         table.insert(partes, ctx_vizinhos.antes)
+        table.insert(partes, "")
+    end
+
+    -- O registro do que a obra ensinou em OUTROS capítulos. O bloco acima
+    -- ("já foi ensinado antes") cobre o capítulo atual com a síntese inteira
+    -- de cada trecho; este cobre o resto da obra com uma linha por conceito.
+    --
+    -- Sem ele, um trecho do capítulo 7 recebia meia página sobre os 120
+    -- trechos escritos antes dele, e reensinava `unsafe` do zero achando que
+    -- estava apresentando o assunto. A instrução é explícita sobre a diferença
+    -- entre USAR e REAPRESENTAR: proibir a menção produziria um texto que
+    -- finge que o leitor nunca viu o conceito.
+    if ensinado ~= nil and ensinado ~= "" then
+        table.insert(partes, "JÁ DEFINIDO EM OUTRO CAPÍTULO DESTA OBRA. Trate como conhecido:")
+        table.insert(partes, "use, aplique e cite (\"como visto em 1.9\") à vontade — mas NÃO")
+        table.insert(partes, "defina de novo, NÃO explique o que é, e NÃO abra o trecho")
+        table.insert(partes, "apresentando o assunto como se fosse novo:")
+        table.insert(partes, ensinado)
         table.insert(partes, "")
     end
 
@@ -293,6 +317,22 @@ function P.secao(obra: Obra, capitulo: Capitulo, sub: Sub, ctx_vizinhos: Vizinha
     table.insert(partes, "- por último, uma linha começando por \"Exercício proposto:\"")
     table.insert(partes, "  com o enunciado do exercício que fecha este trecho, em uma frase.")
     table.insert(partes, "<!--/SINTESE-->")
+
+    -- O segundo bloco, em forma de máquina. A síntese acima é para outro
+    -- MODELO ler; esta lista é para o CÓDIGO indexar, e é o que alimenta o
+    -- "já ensinado nesta obra" de todos os trechos seguintes. Por isso o
+    -- formato rígido e a instrução de nomear o conceito como ele é conhecido:
+    -- a comparação é textual, e "unsafe" e "o bloco unsafe do Rust" não se
+    -- reconhecem como o mesmo assunto.
+    table.insert(partes, "")
+    table.insert(partes, "E feche com este outro bloco, separado do anterior — os conceitos")
+    table.insert(partes, "que ESTE trecho DEFINIU (não os que ele apenas usou), separados por")
+    table.insert(partes, "ponto e vírgula, cada um nomeado como o assunto é conhecido, sem")
+    table.insert(partes, "artigo e sem frase (\"ponteiros brutos\", não \"o que são ponteiros")
+    table.insert(partes, "brutos em Rust\"). De 2 a 6 termos, ou nenhum se o trecho só aplicou")
+    table.insert(partes, "o que já estava definido:")
+    table.insert(partes, "")
+    table.insert(partes, "<!--CONCEITOS-->termo; outro termo; mais um<!--/CONCEITOS-->")
 
     return table.concat(partes, "\n")
 end
@@ -382,7 +422,8 @@ function P.exercicios(
     capitulo: Capitulo,
     cobertos: string,
     fora: string,
-    n: number
+    n: number,
+    ensinado: string?
 ): string
     local partes = {
         "Obra: **" .. obra.titulo .. "**",
@@ -406,6 +447,18 @@ function P.exercicios(
         table.insert(partes, "Estes outros trechos do capítulo NÃO são seus — outra lista os cobre.")
         table.insert(partes, "Não escreva exercício sobre eles:")
         table.insert(partes, fora)
+        table.insert(partes, "")
+    end
+
+    -- A lista também herda o registro: sem ele, os exercícios de um capítulo
+    -- que reensina um assunto cobram esse assunto como se fosse novo. Aqui a
+    -- regra é o contrário da do trecho — combinar com o que já se sabe é
+    -- exatamente o que um bom exercício de capítulo faz.
+    if ensinado ~= nil and ensinado ~= "" then
+        table.insert(partes, "O leitor JÁ SABE isto, ensinado em outros capítulos. Pode ser exigido")
+        table.insert(partes, "sem reapresentação, e combinar com o assunto deste capítulo é o que")
+        table.insert(partes, "faz um bom exercício aqui:")
+        table.insert(partes, ensinado)
         table.insert(partes, "")
     end
 

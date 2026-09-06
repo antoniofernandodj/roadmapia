@@ -636,7 +636,7 @@ function M.rodar()
     O.gravar_plano(assert(O.montar(esboco(10, 20), "medida")))
 
     local passo, primeira_abertura = 0, nil
-    local medidos, soma_com_sintese = 0, 0
+    local medidos, soma_com_sintese, soma_registro = 0, 0, 0
     local emvoo_m = {}
     while true do
         while #emvoo_m < 6 do
@@ -656,6 +656,7 @@ function M.rodar()
                         soma_com_sintese += 1
                     end
                 end
+                soma_registro += #O.ja_ensinado(pl, t.cap)
                 medidos += 1
             end
             table.insert(emvoo_m, t)
@@ -664,7 +665,10 @@ function M.rodar()
             break
         end
         local f = table.remove(emvoo_m, 1)
-        O.concluir(f, "corpo\n<!--SINTESE-->\n- ensinou algo\n<!--/SINTESE-->")
+        -- Cada trecho declara dois conceitos SEUS, como na produção real.
+        O.concluir(f, "corpo\n<!--SINTESE-->\n- ensinou algo\n<!--/SINTESE-->\n"
+            .. "<!--CONCEITOS-->conceito " .. chave(f) .. "; outro " .. chave(f)
+            .. "<!--/CONCEITOS-->")
     end
 
     local total_m = O.contar(O.plano()).total
@@ -689,6 +693,118 @@ function M.rodar()
     conferir(media > 2.5,
         "um trecho encontra mais capítulos anteriores já sintetizados que antes",
         string.format("%.2f (era 2,27)", media))
+
+    -- A manchete. O bloco `O.vizinhanca` media 500 caracteres em média — era
+    -- todo o contexto que um trecho recebia sobre os outros capítulos. O
+    -- registro de conceitos é o que passou a acompanhá-lo, e ele cresce com a
+    -- obra em vez de encolher.
+    local registro = soma_registro / math.max(medidos, 1)
+    conferir(registro > 2000,
+        "…e um registro do que a obra já definiu fora do capítulo dele",
+        string.format("%.0f caracteres em média (a vizinhança sozinha dava 500)", registro))
+
+    -- O teto existe para o bloco não crescer até dominar o prompt: 200 trechos
+    -- declarando 2 conceitos cada dariam 400, que é exatamente o limite.
+    local n_registro = #O.ensinado_de(O.plano())
+    conferir(n_registro > 0 and n_registro <= 400, "o registro tem teto",
+        tostring(n_registro))
+
+    -- ── 10. o registro, no detalhe ──────────────────────────────────────────────
+
+    -- Os dois blocos que o trecho devolve, separados do corpo. O de conceitos
+    -- é rígido de propósito: a síntese é para outro MODELO ler, esta lista é
+    -- para o CÓDIGO indexar.
+    local corpo_b, sint_b, conc_b = O.extrair_blocos(
+        "## T\n\ntexto\n\n<!--SINTESE-->\n- resumo\n<!--/SINTESE-->\n"
+        .. "<!--CONCEITOS-->ponteiros brutos; unsafe ; x<!--/CONCEITOS-->")
+    conferir(corpo_b == "## T\n\ntexto", "extrair_blocos devolve só o corpo", corpo_b)
+    conferir(sint_b:find("resumo", 1, true) ~= nil, "…e a síntese em prosa")
+    conferir(#conc_b == 2 and conc_b[1] == "ponteiros brutos" and conc_b[2] == "unsafe",
+        "…e os conceitos aparados, sem o termo curto demais para identificar algo",
+        table.concat(conc_b, "|"))
+
+    -- Um modelo que ignore o bloco novo não pode quebrar nada — é o mesmo
+    -- recuo que a síntese sozinha já tinha.
+    local c2, s2, k2 = O.extrair_blocos("corpo\n<!--SINTESE-->\n- r\n<!--/SINTESE-->")
+    conferir(c2 == "corpo" and s2:find("r", 1, true) ~= nil and #k2 == 0,
+        "sem o bloco de conceitos, o resto continua funcionando")
+
+    -- Ponta a ponta, com a fila de verdade.
+    O.gravar_plano(assert(O.montar(esboco(3, 2), "registro")))
+
+    local r1 = O.tomar_tarefa()
+    conferir(r1 ~= nil and r1.cap == 1 and r1.sub == 1, "a fila entrega 1.1")
+    O.concluir(r1, "corpo\n<!--CONCEITOS-->ponteiros brutos; unsafe<!--/CONCEITOS-->")
+
+    local pl_r = O.plano()
+    conferir(#O.ensinado_de(pl_r) == 2, "concluir registra os conceitos do trecho",
+        tostring(#O.ensinado_de(pl_r)))
+    conferir(pl_r.ensinado[1].cap == 1 and pl_r.ensinado[1].sub == 1,
+        "…com o endereço de quem definiu")
+    conferir(O.ja_ensinado(pl_r, 1) == "",
+        "o próprio capítulo não entra no bloco do prompt — a vizinhança já o cobre")
+    conferir(O.ja_ensinado(pl_r, 2):find("ponteiros brutos (1.1)", 1, true) ~= nil,
+        "outro capítulo recebe o conceito com o endereço do dono",
+        O.ja_ensinado(pl_r, 2))
+
+    -- Repetir dentro do MESMO capítulo não conta: ali o autor já recebe a
+    -- síntese inteira dos trechos anteriores, e voltar a um assunto costuma
+    -- ser progressão.
+    local r2 = O.tomar_tarefa()
+    conferir(r2 ~= nil and r2.cap == 1 and r2.sub == 2, "a fila entrega 1.2")
+    O.concluir(r2, "corpo\n<!--CONCEITOS-->ponteiros brutos<!--/CONCEITOS-->")
+    conferir(#O.repeticoes_de(O.plano()) == 0,
+        "repetir dentro do mesmo capítulo não é anotado como repetição")
+    conferir(#O.ensinado_de(O.plano()) == 2, "…e não duplica o registro")
+
+    local r3 = O.tomar_tarefa()
+    conferir(r3 ~= nil and r3.tipo == "abertura" and r3.cap == 1,
+        "com o capítulo 1 fechado, a abertura dele sai em seguida")
+    O.concluir(r3, "abertura do capítulo 1")
+
+    -- Já em OUTRO capítulo, conta. E a comparação é por `O.slug`, então
+    -- maiúsculas e acentos não escapam.
+    local r4 = O.tomar_tarefa()
+    conferir(r4 ~= nil and r4.cap == 2 and r4.sub == 1, "a fila entrega 2.1")
+    O.concluir(r4, "corpo\n<!--CONCEITOS-->Ponteiros Brutos<!--/CONCEITOS-->")
+
+    local pl_rep = O.plano()
+    conferir(#O.repeticoes_de(pl_rep) == 1,
+        "reensinar em outro capítulo vira repetição anotada",
+        tostring(#O.repeticoes_de(pl_rep)))
+    conferir(pl_rep.repeticoes[1].dono == "1.1" and pl_rep.repeticoes[1].repetidor == "2.1",
+        "…dizendo quem era o dono e quem repetiu")
+    conferir(#O.ensinado_de(pl_rep) == 2,
+        "…sem o registro ganhar uma entrada nova (maiúscula não é conceito novo)")
+    conferir(ctx.tem_repeticoes == "true" and ctx.repeticoes_rotulo:find("1 conceito", 1, true) ~= nil,
+        "…e a tela mostra o placar", tostring(ctx.repeticoes_rotulo))
+
+    -- Planos gravados antes desta versão não têm os campos.
+    local antigo_r = assert(O.montar(esboco(1, 1), "sem-registro"))
+    antigo_r.ensinado = nil
+    antigo_r.repeticoes = nil
+    O.gravar_plano(antigo_r)
+    conferir(O.ja_ensinado(O.plano(), 2) == "", "plano sem registro devolve bloco vazio")
+    conferir(ctx.tem_repeticoes == "false", "…e a tela não anuncia repetição nenhuma")
+    local t_old = O.tomar_tarefa()
+    O.concluir(t_old, "corpo\n<!--CONCEITOS-->algo novo<!--/CONCEITOS-->")
+    conferir(#O.ensinado_de(O.plano()) == 1, "…e passa a registrar a partir dali")
+
+    -- E o prompt: o registro chega mesmo, com a instrução que importa.
+    local sec_com = P.secao(com_obs, com_obs.capitulos[1], com_obs.capitulos[1].subs[1],
+        vizinhos, "- unsafe (1.9)")
+    conferir(sec_com:find("- unsafe (1.9)", 1, true) ~= nil,
+        "o registro entra no prompt do trecho")
+    conferir(sec_com:find("defina de novo", 1, true) ~= nil,
+        "…com a instrução de usar sem redefinir")
+    conferir(sec_com:find("<!--CONCEITOS-->", 1, true) ~= nil,
+        "…e o prompt pede o bloco de conceitos de volta")
+    local sec_sem = P.secao(com_obs, com_obs.capitulos[1], com_obs.capitulos[1].subs[1], vizinhos)
+    conferir(sec_sem:find("JÁ DEFINIDO EM OUTRO", 1, true) == nil,
+        "sem registro, nenhum cabeçalho órfão")
+    local ex_com = P.exercicios(com_obs, com_obs.capitulos[1], "1. T: s", "", 3, "- unsafe (1.9)")
+    conferir(ex_com:find("- unsafe (1.9)", 1, true) ~= nil,
+        "os exercícios também recebem o registro — senão cobram como assunto novo")
 
     write_file = write_file_real
     limpar_ctx()

@@ -107,6 +107,33 @@ export type Plano = {
     -- As partes da prova final. Ficam no plano, e não num capítulo, porque a
     -- prova atravessa a obra inteira.
     prova: { Bloco }?,
+    -- O que a obra JÁ ENSINOU, em ordem de escrita: um registro append-only
+    -- alimentado pelo bloco `<!--CONCEITOS-->` que cada trecho devolve. É o
+    -- que um trecho de um capítulo posterior recebe para não reintroduzir o
+    -- que outro capítulo já definiu. `nil` em planos de versões anteriores.
+    ensinado: { Conceito }?,
+    -- Os conceitos que um trecho declarou definir e que OUTRO capítulo já
+    -- tinha definido. Sai de graça do registro acima, e é o placar: sem ele,
+    -- "a repetição diminuiu" seria uma impressão.
+    repeticoes: { Repeticao }?,
+}
+
+--- Um conceito definido por um trecho, com quem o definiu primeiro.
+export type Conceito = {
+    termo: string,
+    -- A chave de comparação: `O.slug` do termo. Guardada para o registro não
+    -- ter de recalculá-la a cada trecho concluído.
+    chave: string,
+    cap: number,
+    sub: number,
+}
+
+export type Repeticao = {
+    termo: string,
+    --- "1.9" — onde foi ensinado primeiro.
+    dono: string,
+    --- "7.1" — onde foi ensinado de novo.
+    repetidor: string,
 }
 
 --- Uma unidade de trabalho da fila.
@@ -205,6 +232,8 @@ function O.montar(
             questoes_prova = (avaliacao ~= nil) and avaliacao.questoes_prova or 0,
         },
         prova = json.array({}),
+        ensinado = json.array({}),
+        repeticoes = json.array({}),
     }
 
     for i, c in ipairs(esboco.capitulos) do
@@ -459,12 +488,48 @@ end
 --- o formato —, devolve o texto inteiro e síntese vazia: o trecho perde o
 --- contexto extra, mas nada quebra.
 function O.extrair_sintese(texto: string): (string, string)
+    local corpo, sintese = O.extrair_blocos(texto)
+    return corpo, sintese
+end
+
+-- O segundo bloco que `P.secao` pede: os conceitos que ESTE trecho definiu,
+-- em forma de máquina (`termo; termo; termo`) e não de prosa. A síntese é
+-- para outro modelo ler; esta lista é para o código indexar — daí ser um
+-- bloco à parte, com um formato rígido, em vez de tentar minerar termos do
+-- texto corrido da síntese.
+local PADRAO_CONCEITOS = "<!%-%-CONCEITOS%-%->(.-)<!%-%-/CONCEITOS%-%->"
+
+--- Separa o corpo do trecho (o que vai para o arquivo) dos dois blocos que o
+--- modelo anexa no fim: a síntese em prosa e a lista de conceitos.
+---
+--- Se um bloco não vier — o modelo não seguiu o formato —, ele sai vazio e o
+--- resto continua funcionando: o trecho perde contexto extra, nada quebra. É
+--- o mesmo recuo que a síntese sozinha já tinha.
+function O.extrair_blocos(texto: string): (string, string, { string })
     local sintese = texto:match(PADRAO_SINTESE)
-    if sintese == nil then
-        return texto, ""
+    local conceitos_cru = texto:match(PADRAO_CONCEITOS)
+
+    local corpo = texto
+    if sintese ~= nil then
+        corpo = (corpo:gsub(PADRAO_SINTESE, ""))
     end
-    local limpo = aparar((texto:gsub(PADRAO_SINTESE, "")))
-    return limpo, aparar(sintese)
+    if conceitos_cru ~= nil then
+        corpo = (corpo:gsub(PADRAO_CONCEITOS, ""))
+    end
+
+    local conceitos = {}
+    if conceitos_cru ~= nil then
+        for pedaco in tostring(conceitos_cru):gmatch("[^;\n]+") do
+            local t = aparar(pedaco)
+            -- Um termo de duas letras não identifica nada, e um de duzentas é
+            -- uma frase que o modelo não vai reconhecer da próxima vez.
+            if #t >= 3 and #t <= 80 then
+                table.insert(conceitos, t)
+            end
+        end
+    end
+
+    return aparar(corpo), (sintese ~= nil) and aparar(sintese) or "", conceitos
 end
 
 -- ── de uma tarefa para o que ela escreve ────────────────────────────────────
@@ -537,6 +602,7 @@ function O.concluir(tarefa: Tarefa, texto: string): (boolean, string?)
     -- Exercícios e prova não passam nada adiante: ninguém escreve em cima
     -- deles, e o texto vai inteiro para o arquivo.
     local corpo, sintese = texto, ""
+    local conceitos: { string } = {}
     if tarefa.tipo == "abertura" then
         local ci = tarefa.cap
         local cap = (ci ~= nil) and plano.capitulos[ci] or nil
@@ -546,7 +612,7 @@ function O.concluir(tarefa: Tarefa, texto: string): (boolean, string?)
         sintese = aparar(texto)
         corpo = O.cabecalho_capitulo(plano, cap, texto)
     elseif tarefa.tipo == "trecho" then
-        corpo, sintese = O.extrair_sintese(texto)
+        corpo, sintese, conceitos = O.extrair_blocos(texto)
     else
         corpo = aparar(texto)
     end
@@ -557,6 +623,14 @@ function O.concluir(tarefa: Tarefa, texto: string): (boolean, string?)
         alvo.erro = ""
         if tarefa.tipo == "trecho" or tarefa.tipo == "abertura" then
             alvo.sintese = sintese
+        end
+        -- Só o que foi GRAVADO entra no registro. Um trecho cujo arquivo
+        -- falhou vai ser refeito, e os conceitos dele contariam duas vezes —
+        -- a segunda como repetição de si mesmo.
+        if tarefa.tipo == "trecho" and tarefa.cap ~= nil and tarefa.sub ~= nil
+            and #conceitos > 0
+        then
+            O.registrar_conceitos(plano, tarefa.cap, tarefa.sub, conceitos)
         end
     else
         alvo.status = O.ERRO
@@ -679,6 +753,113 @@ function O.vizinhanca(plano: Plano, ci: number, si: number): { antes: string, de
     }
 end
 
+-- ── o registro do que a obra já ensinou ─────────────────────────────────────
+--
+-- `O.vizinhanca` resolve o contexto DENTRO de um capítulo: um trecho recebe a
+-- síntese inteira de cada trecho anterior do mesmo capítulo. Ao cruzar a
+-- fronteira do capítulo, porém, tudo isso é descartado e sobra um parágrafo
+-- por capítulo — e, enquanto a abertura não existe, nem isso: sobra o resumo
+-- PLANEJADO, uma frase escrita antes de qualquer conteúdo.
+--
+-- Foi assim que `unsafe` foi ensinado do zero no capítulo 7 de uma obra que já
+-- o ensinara no 1 e no 2: o autor de 7.1 recebeu 500 caracteres sobre os 120
+-- trechos escritos antes dele (medido — ver `tests/luau/fila.luau`, seção 9).
+--
+-- Este registro é a outra metade. Cada trecho já devolve a lista de conceitos
+-- que definiu; ela era jogada fora. Agora ela se acumula no plano e volta como
+-- uma linha por conceito para todo trecho seguinte, com o lugar onde o assunto
+-- tem dono.
+
+-- Teto do registro. Um conceito que não coube é um conceito que o autor
+-- seguinte pode reintroduzir — mas um bloco sem teto cresceria até dominar o
+-- prompt. Quando lota, quem fica são os PRIMEIROS: são os fundamentos, e é
+-- justamente o fundamento que os capítulos posteriores reensinam.
+local MAX_ENSINADO = 400
+
+function O.ensinado_de(plano: Plano): { Conceito }
+    local lista = plano.ensinado
+    if type(lista) ~= "table" then
+        return {}
+    end
+    return lista
+end
+
+function O.repeticoes_de(plano: Plano): { Repeticao }
+    local lista = plano.repeticoes
+    if type(lista) ~= "table" then
+        return {}
+    end
+    return lista
+end
+
+--- Onde um trecho mora, para citar no prompt e na tela: "7.1".
+function O.endereco(cap: number, sub: number): string
+    return tostring(cap) .. "." .. tostring(sub)
+end
+
+--- Registra os conceitos que um trecho declarou definir, e anota a repetição
+--- quando outro capítulo já tinha definido o mesmo.
+---
+--- A comparação é por `O.slug` do termo, o que é grosseiro de propósito e não
+--- esconde: "unsafe" e "código unsafe" são chaves diferentes e passariam como
+--- dois conceitos. O registro erra para MENOS — deixa passar repetição, nunca
+--- inventa uma —, e é o lado certo de errar num sinal que a pessoa vai ler
+--- como "isto aqui está duplicado".
+---
+--- Só conta como repetição o que vem de OUTRO capítulo: dentro do mesmo, o
+--- autor já recebe a síntese inteira dos trechos anteriores por
+--- `O.vizinhanca`, e voltar a um assunto ali costuma ser progressão, não
+--- repetição.
+---
+--- Muta o plano no lugar; quem chama grava. Sem `fetch` no meio, como todo o
+--- resto deste módulo.
+function O.registrar_conceitos(plano: Plano, ci: number, si: number, conceitos: { string })
+    if type(plano.ensinado) ~= "table" then
+        plano.ensinado = json.array({})
+    end
+    if type(plano.repeticoes) ~= "table" then
+        plano.repeticoes = json.array({})
+    end
+
+    local por_chave = {}
+    for _, c in ipairs(plano.ensinado) do
+        por_chave[c.chave] = c
+    end
+
+    for _, termo in ipairs(conceitos) do
+        local chave = O.slug(termo)
+        local dono = por_chave[chave]
+        if dono == nil then
+            if #plano.ensinado < MAX_ENSINADO then
+                local novo = { termo = termo, chave = chave, cap = ci, sub = si }
+                table.insert(plano.ensinado, novo)
+                por_chave[chave] = novo
+            end
+        elseif dono.cap ~= ci then
+            table.insert(plano.repeticoes, {
+                termo = termo,
+                dono = O.endereco(dono.cap, dono.sub),
+                repetidor = O.endereco(ci, si),
+            })
+        end
+    end
+end
+
+--- O bloco que vai no prompt: o que a obra ensinou FORA deste capítulo.
+---
+--- Fora, e não tudo: o que é do próprio capítulo já chega por `O.vizinhanca`
+--- com a síntese inteira, e repetir aqui gastaria prompt para dizer o que já
+--- foi dito melhor.
+function O.ja_ensinado(plano: Plano, ci: number): string
+    local linhas = {}
+    for _, c in ipairs(O.ensinado_de(plano)) do
+        if c.cap ~= ci then
+            table.insert(linhas, "- " .. c.termo .. " (" .. O.endereco(c.cap, c.sub) .. ")")
+        end
+    end
+    return table.concat(linhas, "\n")
+end
+
 --- O contexto de um lote de exercícios: as linhas dos trechos que ele COBRE, e
 --- as dos que pertencem a outro lote do mesmo capítulo.
 ---
@@ -779,6 +960,9 @@ function O.projetar(rotulos: { nome: string, unidades: string }?, plano: Plano?)
         ctx.prova_detalhe = ""
         ctx.prova_marca = "·"
         ctx.prova_cor = "#45475A"
+        ctx.tem_repeticoes = "false"
+        ctx.repeticoes_rotulo = ""
+        ctx.repeticoes_ui = "[]"
         return nil
     end
 
@@ -909,6 +1093,36 @@ function O.projetar(rotulos: { nome: string, unidades: string }?, plano: Plano?)
         ctx.prova_detalhe = ""
         ctx.prova_marca = "·"
         ctx.prova_cor = "#45475A"
+    end
+
+    -- O placar da repetição. Sai de graça do registro de conceitos: sempre que
+    -- um trecho declara definir algo que outro CAPÍTULO já definiu, a colisão
+    -- é anotada. Aparece na tela porque "a repetição diminuiu" sem número é
+    -- uma impressão, e porque saber que 7.1 reensinou o que 1.9 já ensinava é
+    -- o que permite refazer aquele trecho em vez de reler a obra inteira.
+    local reps = O.repeticoes_de(plano)
+    ctx.tem_repeticoes = (#reps > 0) and "true" or "false"
+    if #reps > 0 then
+        ctx.repeticoes_rotulo = tostring(#reps) .. " "
+            .. ((#reps == 1) and "conceito reensinado" or "conceitos reensinados")
+            .. " em outro capítulo"
+        local linhas_rep = {}
+        -- Teto na TELA, não no registro: a lista inteira fica no plano (e no
+        -- log), mas 200 linhas numa lista rolável não ajudam ninguém a decidir
+        -- o que refazer.
+        for i, r in ipairs(reps) do
+            if i > 25 then
+                break
+            end
+            table.insert(linhas_rep, {
+                termo = r.termo,
+                onde = r.repetidor .. " repete " .. r.dono,
+            })
+        end
+        ctx.repeticoes_ui = json.encode(json.array(linhas_rep))
+    else
+        ctx.repeticoes_rotulo = ""
+        ctx.repeticoes_ui = "[]"
     end
     return c
 end

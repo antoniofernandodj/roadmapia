@@ -83,6 +83,23 @@
     </column>
     </scrollable>
 
+    <!-- ── repetição entre capítulos ──────────────────────────────────── -->
+    <!-- O placar da correção contra reensino: cada linha é um conceito que um
+      trecho declarou definir e que outro CAPÍTULO já tinha definido. Só
+      aparece quando há alguma — uma lista vazia permanente vira ruído. -->
+    <column class="painel" if="{tem_repeticoes}" equals="true">
+      <text class="rotulo">{repeticoes_rotulo}</text>
+      <text class="ajuda">
+        O trecho da direita já era dono do assunto. Vale reler os da esquerda.
+      </text>
+      <column class="lista">
+        <row class="linha" for-each="repeticoes_ui" var="r">
+          <text class="corpo largo">{r.termo}</text>
+          <text class="nota">{r.onde}</text>
+        </row>
+      </column>
+    </column>
+
     <container class="faixa" if="{tem_erro}" equals="true">
       <text class="erro">{erro}</text>
     </container>
