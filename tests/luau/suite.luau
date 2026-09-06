@@ -30,6 +30,7 @@ function rodar()
     falhas = 0
 
     require("fila").rodar()
+    require("avaliacao_casos").rodar()
     require("openrouter_casos").rodar()
 
     ctx.teste_saida = table.concat(linhas, "\n")

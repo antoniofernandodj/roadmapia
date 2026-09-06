@@ -952,6 +952,6 @@ fn rodar_suites_luau() -> u8 {
         eprintln!("✗ suítes Luau: {falhas} de {total} casos falharam");
         return falhas;
     }
-    println!("✓ suítes Luau ({total} casos: fila de produção, openrouter)");
+    println!("✓ suítes Luau ({total} casos: fila de produção, avaliação, openrouter)");
     0
 }
