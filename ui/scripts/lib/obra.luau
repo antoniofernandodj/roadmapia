@@ -654,6 +654,46 @@ function O.vizinhanca(plano: Plano, ci: number, si: number): { antes: string, de
     }
 end
 
+--- O contexto de um lote de exercícios: as linhas dos trechos que ele COBRE, e
+--- as dos que pertencem a outro lote do mesmo capítulo.
+---
+--- Mesma ideia de `O.vizinhanca`, e mesma fonte: a SÍNTESE de cada trecho, que
+--- é o que ele ensinou de verdade. É a diferença entre cobrar o texto escrito
+--- e cobrar o foco que fora planejado para ele. A síntese sempre existe aqui —
+--- `O.tomar_tarefa` só libera o lote depois que os trechos da faixa estão
+--- resolvidos —, e cai no `foco` só se um deles falhou.
+---
+--- A segunda lista é fronteira explícita: as faixas já garantem que dois lotes
+--- não vejam o mesmo material, e dizer isto ao modelo evita que ele estique o
+--- assunto para um vizinho que outro lote vai cobrir.
+function O.linhas_do_lote(cap: Capitulo, lote: Bloco): (string, string)
+    local dentro, fora = {}, {}
+    for i, s in ipairs(cap.subs) do
+        if i >= lote.de and i <= lote.ate then
+            local nota = (s.sintese ~= nil and s.sintese ~= "") and s.sintese or s.foco
+            table.insert(dentro, tostring(i) .. ". " .. s.titulo .. ": " .. (nota or ""))
+        else
+            table.insert(fora, "- " .. s.titulo)
+        end
+    end
+    return table.concat(dentro, "\n"), table.concat(fora, "\n")
+end
+
+--- Idem para uma parte da prova, cuja faixa é sobre a obra ACHATADA: os
+--- índices atravessam capítulos, então cada linha diz de qual veio.
+function O.linhas_da_prova(plano: Plano, parte: Bloco): string
+    local linhas = {}
+    for i, t in ipairs(O.trechos_planos(plano)) do
+        if i >= parte.de and i <= parte.ate then
+            local s = t.sub
+            local nota = (s.sintese ~= nil and s.sintese ~= "") and s.sintese or s.foco
+            table.insert(linhas, "(cap. " .. tostring(t.ci) .. ") " .. s.titulo
+                .. ": " .. (nota or ""))
+        end
+    end
+    return table.concat(linhas, "\n")
+end
+
 -- ── contagens para a tela ───────────────────────────────────────────────────
 
 function O.contar(plano: Plano): Contagem

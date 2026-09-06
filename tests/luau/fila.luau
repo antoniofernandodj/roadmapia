@@ -465,7 +465,72 @@ function M.rodar()
     conferir(arquivos[O.prova_de(O.plano())[1].arquivo] ~= nil,
         "a parte de prova grava o arquivo dela")
 
-    -- ── 8b. falhar e refazer um lote e uma parte ────────────────────────────────
+    -- ── 8a. o recorte que vira prompt ───────────────────────────────────────────
+    --
+    -- Off-by-one aqui não daria erro nenhum: o lote sairia escrito, cobrado, e
+    -- cobrando um trecho que não é dele — ou deixando um sem exercício. Por
+    -- isso o recorte mora em `obra.luau` (ao lado de `O.vizinhanca`, que faz o
+    -- mesmo tipo de projeção) e não na tela, que a suíte não alcança.
+
+    local pl_rec = O.plano()
+    local cap_rec = pl_rec.capitulos[1]
+    cap_rec.subs[1].sintese = "SINTESE-DO-TRECHO-1"
+    local dentro, fora = O.linhas_do_lote(cap_rec, O.lotes_de(cap_rec)[1])
+    conferir(dentro:find("Trecho 1.1", 1, true) ~= nil
+        and dentro:find("Trecho 1.2", 1, true) ~= nil,
+        "o lote 1 recebe os trechos 1 e 2 do capítulo", dentro)
+    conferir(dentro:find("Trecho 1.3", 1, true) == nil,
+        "…e não os do lote seguinte", dentro)
+    conferir(dentro:find("SINTESE-DO-TRECHO-1", 1, true) ~= nil,
+        "…com a síntese do que o trecho ensinou, não com o foco planejado")
+    conferir(fora:find("Trecho 1.3", 1, true) ~= nil
+        and fora:find("Trecho 1.1", 1, true) == nil,
+        "a fronteira lista só o que é de outro lote", fora)
+
+    -- A prova recorta a obra ACHATADA: a parte 2 começa no capítulo 2, e cada
+    -- linha diz de que capítulo veio.
+    local linhas_p2 = O.linhas_da_prova(pl_rec, O.prova_de(pl_rec)[2])
+    conferir(linhas_p2:find("Trecho 2.1", 1, true) ~= nil,
+        "a parte 2 da prova cobre os trechos 5 a 8 — os do capítulo 2", linhas_p2)
+    conferir(linhas_p2:find("Trecho 1.1", 1, true) == nil,
+        "…e nenhum do capítulo 1, que é da parte 1")
+    conferir(linhas_p2:find("(cap. 2)", 1, true) ~= nil,
+        "…dizendo de que capítulo cada trecho veio")
+
+    -- ── 8b. os prompts novos ────────────────────────────────────────────────────
+    --
+    -- Mesma exigência da seção 1b: as observações gerais valem em TODA chamada
+    -- paga, e estas duas são chamadas pagas como qualquer outra.
+
+    local ex = P.exercicios(com_obs, com_obs.capitulos[1], "1. T: sintese", "- outro", 5)
+    conferir(string.find(ex, OBS, 1, true) ~= nil,
+        "as observações entram no prompt dos exercícios")
+    conferir(string.find(ex, "EXATAMENTE 5", 1, true) ~= nil,
+        "o prompt pede o número exato de exercícios do lote")
+    conferir(string.find(ex, "- outro", 1, true) ~= nil,
+        "…e diz quais trechos são de outro lote")
+    local ex_sem_fora = P.exercicios(com_obs, com_obs.capitulos[1], "1. T: s", "", 3)
+    conferir(string.find(ex_sem_fora, "NÃO são seus", 1, true) == nil,
+        "lote único não ganha bloco de fronteira vazio")
+
+    local pr = P.prova(com_obs, "(cap. 1) T: sintese", 10, 2, 4)
+    conferir(string.find(pr, OBS, 1, true) ~= nil,
+        "as observações entram no prompt da prova")
+    conferir(string.find(pr, "EXATAMENTE", 1, true) ~= nil,
+        "o prompt pede o número exato de questões")
+    conferir(string.find(pr, "parte 2 de 4", 1, true) ~= nil,
+        "a parte sabe qual pedaço da prova ela é")
+
+    -- A síntese que cada trecho devolve passou a incluir o exercício com que
+    -- ele terminou — é o que deixa a lista do capítulo não repetir o que o
+    -- texto já propôs.
+    local sec = P.secao(com_obs, com_obs.capitulos[1], com_obs.capitulos[1].subs[1], vizinhos)
+    conferir(string.find(sec, "Exercício proposto:", 1, true) ~= nil,
+        "a síntese do trecho passa adiante o exercício que ele propôs")
+    conferir(string.find(ex, "NÃO repita", 1, true) ~= nil,
+        "…e a lista do capítulo é instruída a não repeti-lo")
+
+    -- ── 8c. falhar e refazer um lote e uma parte ────────────────────────────────
     --
     -- O caminho que o refactor do `O.alvo_de` existe para proteger: uma tarefa
     -- nova que funcionasse ao CONCLUIR e vazasse em "fazendo" ao FALHAR ficaria
@@ -499,7 +564,7 @@ function M.rodar()
     conferir(chave(O.tomar_tarefa()) == chave(voltou),
         "o lote reenfileirado por rate limit volta a sair")
 
-    -- ── 8c. os índices em disco ─────────────────────────────────────────────────
+    -- ── 8d. os índices em disco ─────────────────────────────────────────────────
 
     arquivos = {}
     O.gravar_plano(assert(O.montar(esboco(2, 2), "indices-av", nil,
@@ -533,7 +598,7 @@ function M.rodar()
     end
     conferir(n_av == 11, "um arquivo por tarefa, mais os dois índices", tostring(n_av))
 
-    -- ── 8d. planos de antes desta versão ────────────────────────────────────────
+    -- ── 8e. planos de antes desta versão ────────────────────────────────────────
     --
     -- Um `obra_json` gravado por uma versão anterior não tem `exercicios` nem
     -- `prova`. Retomar uma produção daquelas não pode explodir nem mudar de

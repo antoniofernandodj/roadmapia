@@ -286,6 +286,12 @@ function P.secao(obra: Obra, capitulo: Capitulo, sub: Sub, ctx_vizinhos: Vizinha
     table.insert(partes, "- 3 a 6 marcadores curtos (até ~40 palavras cada): conceitos e")
     table.insert(partes, "  termos que você definiu, exemplos que usou, a conclusão a que")
     table.insert(partes, "  chegou. Nada de \"neste trecho vimos\" — vá direto ao que foi dito.")
+    -- Esta linha custa quase nada e evita uma repetição cara: a lista de
+    -- exercícios do capítulo (`P.exercicios`) recebe estas sínteses e é
+    -- instruída a não repetir o que os trechos já propuseram. Sem ela, os dois
+    -- lados escolhem o exercício mais óbvio do assunto — que é o mesmo.
+    table.insert(partes, "- por último, uma linha começando por \"Exercício proposto:\"")
+    table.insert(partes, "  com o enunciado do exercício que fecha este trecho, em uma frase.")
     table.insert(partes, "<!--/SINTESE-->")
 
     return table.concat(partes, "\n")
@@ -322,6 +328,193 @@ function P.abertura(obra: Obra, capitulo: Capitulo, trechos: string): string
         "",
         "Comece direto no texto, sem título — o título já está no arquivo.",
         "NÃO resuma o conteúdo dos trechos; eles se explicam sozinhos.",
+    }
+    for _, linha in ipairs(resto) do
+        table.insert(partes, linha)
+    end
+
+    return table.concat(partes, "\n")
+end
+
+-- ── fase 3: exercícios e prova (só em curso) ────────────────────────────────
+--
+-- Uma chamada por LOTE, e cada lote recebe um pedaço do material — os trechos
+-- 1 a 10 de um capítulo, ou o primeiro quarto da obra. A divisão é o que
+-- impede dois lotes simultâneos de escreverem o mesmo exercício: eles não
+-- estão olhando para o mesmo texto. Ver `lib/avaliacao.luau`.
+--
+-- O que chega aqui como `cobertos` são as SÍNTESES dos trechos da faixa (o
+-- bloco `<!--SINTESE-->` que cada autor devolve), não os focos planejados. É
+-- a diferença entre cobrar o que foi escrito e cobrar o que era para ter sido.
+
+P.SISTEMA_EXERCICIOS = [[
+Você monta listas de exercícios para um curso técnico, em português do Brasil,
+em Markdown. Quem resolve tem SÓ o texto do curso — não há aula, não há
+monitor, não há gabarito além do seu. Um exercício que dependa de algo que o
+material não ensinou é um exercício quebrado.
+
+Cada exercício traz, nesta ordem:
+1. o enunciado, com contexto CONCRETO — dados de entrada, código de partida,
+   saída esperada. "Escreva um programa que faça X" solto não serve;
+2. a dificuldade, entre parênteses: básico, intermediário ou desafio;
+3. a solução comentada, com código COMPLETO e executável e a saída real, e
+   explicando a decisão em cada ponto onde havia mais de um caminho.
+
+Proibido, e é o que estraga uma lista destas:
+- perguntar definição ("o que é X?") — isso é leitura, não exercício;
+- exercício cuja solução é copiar um exemplo do texto trocando os nomes;
+- "pesquise", "reflita", "discuta com um colega", "explore a documentação";
+- enunciado ambíguo, que aceita duas respostas incompatíveis como corretas.
+
+A lista progride: começa aplicando o que o texto fez e termina exigindo
+combinar dois ou mais trechos.
+]]
+
+--- Um lote de exercícios: `n` exercícios sobre os trechos que `cobertos`
+--- descreve.
+---
+--- `fora` são os títulos dos trechos do MESMO capítulo que pertencem a outros
+--- lotes. Entram como fronteira explícita: as faixas já garantem que dois
+--- lotes não vejam o mesmo material, e dizer isto ao modelo evita que ele
+--- estique o assunto para um vizinho que outro lote vai cobrir.
+function P.exercicios(
+    obra: Obra,
+    capitulo: Capitulo,
+    cobertos: string,
+    fora: string,
+    n: number
+): string
+    local partes = {
+        "Obra: **" .. obra.titulo .. "**",
+        obra.resumo or "",
+        "",
+        "Público: " .. (obra.publico or "não especificado"),
+        "",
+        "Escreva EXATAMENTE " .. tostring(n) .. " exercícios sobre estes trechos do",
+        "capítulo **" .. capitulo.titulo .. "**, e só sobre eles:",
+        "",
+        cobertos,
+        "",
+        "Cada linha acima traz o que aquele trecho ENSINOU de verdade, e a última",
+        "delas diz o exercício com que o próprio trecho terminou. NÃO repita",
+        "nenhum desses exercícios: os seus são a lista do capítulo, e valem por",
+        "combinarem trechos que, no texto, foram ensinados separados.",
+        "",
+    }
+
+    if fora ~= "" then
+        table.insert(partes, "Estes outros trechos do capítulo NÃO são seus — outra lista os cobre.")
+        table.insert(partes, "Não escreva exercício sobre eles:")
+        table.insert(partes, fora)
+        table.insert(partes, "")
+    end
+
+    for _, linha in ipairs(observacoes(obra)) do
+        table.insert(partes, linha)
+    end
+
+    local resto = {
+        "Formato:",
+        "",
+        "## Exercícios — " .. capitulo.titulo,
+        "",
+        "### 1. <título curto do exercício>  (básico)",
+        "<enunciado com contexto concreto>",
+        "",
+        "…e assim por todos os " .. tostring(n) .. ".",
+        "",
+        "Depois de TODOS os enunciados, uma linha com `---` e então:",
+        "",
+        "## Soluções comentadas",
+        "",
+        "### 1. <mesmo título>",
+        "<a solução, com código completo e a saída real>",
+        "",
+        "As soluções ficam todas no fim, depois do `---`, para dar a quem lê a",
+        "chance de tentar antes de ver. Comece direto no `## Exercícios` — sem",
+        "preâmbulo e sem recapitular o capítulo.",
+    }
+    for _, linha in ipairs(resto) do
+        table.insert(partes, linha)
+    end
+
+    return table.concat(partes, "\n")
+end
+
+P.SISTEMA_PROVA = [[
+Você escreve a prova final de um curso técnico, em português do Brasil, em
+Markdown. A prova mede se a pessoa consegue USAR o que o curso ensinou — não
+se ela lembra das palavras que ele usou.
+
+Misture os dois formatos, em proporção parecida:
+- múltipla escolha com 4 alternativas, em que as ERRADAS são erros plausíveis,
+  do tipo que alguém que estudou mal cometeria — nunca absurdos de descarte
+  imediato, que transformam a questão num chute com três pistas;
+- questão aberta de resposta curta: o que este código imprime, qual é o erro
+  aqui, que estrutura resolve isto e por quê.
+
+Cada questão declara entre parênteses o que cobra ("cap. 3 — tempo de vida").
+
+O gabarito de cada questão diz por que a certa está certa E, nas de múltipla
+escolha, por que cada errada está errada — nomeando o mal-entendido que leva
+a ela. É a parte que ensina; um gabarito que só aponta a letra não serve.
+
+Proibido: pegadinha de leitura do enunciado, questão que dependa de decorar um
+número ou um nome de API, e questão respondível por qualquer pessoa da área
+sem ter lido este curso.
+]]
+
+--- Uma parte da prova: `n` questões sobre a faixa de trechos que `cobertos`
+--- descreve. Como as faixas são disjuntas, nenhuma parte precisa saber o que
+--- as outras perguntaram — por isso não há um "não repita" aqui.
+function P.prova(
+    obra: Obra,
+    cobertos: string,
+    n: number,
+    parte: number,
+    total_partes: number
+): string
+    local partes = {
+        "Obra: **" .. obra.titulo .. "**",
+        obra.resumo or "",
+        "",
+        "Público: " .. (obra.publico or "não especificado"),
+        "",
+        "Esta é a **parte " .. tostring(parte) .. " de " .. tostring(total_partes)
+            .. "** da prova final. Escreva EXATAMENTE",
+        tostring(n) .. " questões, e só sobre o que estes trechos ensinaram:",
+        "",
+        cobertos,
+        "",
+        "As outras partes cobrem o resto do curso — não invada, e não escreva",
+        "abertura nem encerramento da prova: você está escrevendo um pedaço dela.",
+        "",
+    }
+
+    for _, linha in ipairs(observacoes(obra)) do
+        table.insert(partes, linha)
+    end
+
+    local resto = {
+        "Formato:",
+        "",
+        "## Prova final — parte " .. tostring(parte) .. " de " .. tostring(total_partes),
+        "",
+        "### 1. <a pergunta>  (cap. N — assunto)",
+        "a) …  b) …  c) …  d) …",
+        "",
+        "…e assim por todas as " .. tostring(n) .. ".",
+        "",
+        "Depois de TODAS as questões, uma linha com `---` e então:",
+        "",
+        "## Gabarito — parte " .. tostring(parte),
+        "",
+        "### 1. <resposta>",
+        "<por que ela está certa; nas de múltipla escolha, por que cada outra",
+        "está errada>",
+        "",
+        "O gabarito fica todo no fim, depois do `---`, para a prova poder ser",
+        "respondida antes de ele aparecer.",
     }
     for _, linha in ipairs(resto) do
         table.insert(partes, linha)

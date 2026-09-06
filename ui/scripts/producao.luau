@@ -115,13 +115,14 @@ function produzir(): ()
 
     -- `confirm` suspende a corrotina como o `fetch`; o retorno é a escolha.
     local ok = confirm({
-        title = "Produzir os " .. tostring(faltam) .. " trechos restantes?",
+        title = "Produzir as " .. tostring(faltam) .. " tarefas restantes?",
         message = string.format(
-            "O trecho de amostra custou US$ %.4f. Os %d restantes devem custar "
-                .. "cerca de US$ %.2f no modelo %s.\n\n"
+            "O trecho de amostra custou US$ %.4f. As %d restantes (%s) devem "
+                .. "custar cerca de US$ %.2f no modelo %s.%s\n\n"
                 .. "Leia a amostra antes de decidir:\n%s\n\n"
                 .. "Dá para parar a qualquer momento — o que já foi escrito fica em disco.",
-            por_trecho, faltam, estimado, ctx.modelo or "", ctx.amostra_arquivo or "?"
+            por_trecho, faltam, composicao(O.plano()), estimado, ctx.modelo or "",
+            ressalva_da_estimativa(O.plano()), ctx.amostra_arquivo or "?"
         ),
         confirm_label = string.format("Produzir (~US$ %.2f)", estimado),
         cancel_label = "Agora não",
@@ -146,6 +147,68 @@ function produzir(): ()
         after((i - 1) * 250, "trabalhador")
     end
     projetar()
+end
+
+--- O que sobrou para escrever, por tipo. O número grande sozinho ("as 233
+--- restantes") não diz à pessoa o que ela está autorizando; esta linha diz.
+function composicao(plano): string
+    if plano == nil then
+        return ""
+    end
+    local trechos, aberturas, lotes, partes = 0, 0, 0, 0
+    for _, cap in ipairs(plano.capitulos) do
+        for _, s in ipairs(cap.subs) do
+            if s.status ~= O.PRONTO then
+                trechos += 1
+            end
+        end
+        if cap.status ~= O.PRONTO then
+            aberturas += 1
+        end
+        for _, lote in ipairs(O.lotes_de(cap)) do
+            if lote.status ~= O.PRONTO then
+                lotes += 1
+            end
+        end
+    end
+    for _, p in ipairs(O.prova_de(plano)) do
+        if p.status ~= O.PRONTO then
+            partes += 1
+        end
+    end
+
+    local pedacos = {}
+    local function juntar(n, um, muitos)
+        if n > 0 then
+            table.insert(pedacos, tostring(n) .. " " .. ((n == 1) and um or muitos))
+        end
+    end
+    juntar(trechos, "trecho", "trechos")
+    juntar(aberturas, "abertura de capítulo", "aberturas de capítulo")
+    juntar(lotes, "lote de exercícios", "lotes de exercícios")
+    juntar(partes, "parte de prova", "partes de prova")
+    return table.concat(pedacos, ", ")
+end
+
+--- A honestidade da conta. A amostra medida é sempre um TRECHO (as outras
+--- tarefas dependem dos trechos, então nunca são a primeira da fila), e um
+--- lote de exercícios ou uma parte de prova rende menos tokens que um trecho.
+--- A estimativa erra para CIMA, que é o lado certo de errar numa tela que pede
+--- autorização para gastar — mas quem autoriza tem de saber disso.
+function ressalva_da_estimativa(plano): string
+    if plano == nil then
+        return ""
+    end
+    local extras = #O.prova_de(plano)
+    for _, cap in ipairs(plano.capitulos) do
+        extras += #O.lotes_de(cap)
+    end
+    if extras == 0 then
+        return ""
+    end
+    return "\n\nA conta usa o custo do trecho de amostra para tudo; exercícios e"
+        .. " prova costumam sair mais baratos, então o número acima tende a"
+        .. " ficar um pouco acima do real."
 end
 
 --- Custo médio já medido por trecho. Só é chamada depois da amostra, então o
@@ -194,12 +257,45 @@ function executar(tarefa): (boolean, string?)
     if plano == nil then
         return false, "sem plano"
     end
+
+    local prompt, sistema
+
+    -- A prova vem antes do resto porque é a única tarefa que não pertence a
+    -- capítulo nenhum — ela atravessa a obra, e `tarefa.cap` é `nil`.
+    if tarefa.tipo == "prova" then
+        local todas = O.prova_de(plano)
+        local parte = todas[tarefa.idx]
+        if parte == nil then
+            return false, "parte da prova sumiu"
+        end
+        ctx.status = "Escrevendo a prova (parte " .. tostring(tarefa.idx)
+            .. " de " .. tostring(#todas) .. ")"
+        return chamar(
+            tarefa,
+            P.SISTEMA_PROVA,
+            P.prova(plano, O.linhas_da_prova(plano, parte), parte.n, tarefa.idx, #todas)
+        )
+    end
+
     local cap = plano.capitulos[tarefa.cap]
     if cap == nil then
         return false, "capítulo sumiu"
     end
 
-    local prompt, sistema
+    if tarefa.tipo == "exercicios" then
+        local lote = O.lotes_de(cap)[tarefa.idx]
+        if lote == nil then
+            return false, "lote de exercícios sumiu"
+        end
+        ctx.status = "Escrevendo exercícios: " .. cap.titulo
+        local dentro, fora = O.linhas_do_lote(cap, lote)
+        return chamar(
+            tarefa,
+            P.SISTEMA_EXERCICIOS,
+            P.exercicios(plano, cap, dentro, fora, lote.n)
+        )
+    end
+
     if tarefa.tipo == "abertura" then
         -- A abertura só é liberada depois que todos os trechos do capítulo
         -- estão prontos/com erro (ver `O.tomar_tarefa`), então a síntese de
@@ -226,6 +322,13 @@ function executar(tarefa): (boolean, string?)
         )
     end
 
+    return chamar(tarefa, sistema, prompt)
+end
+
+--- A chamada paga em si, com as tentativas, o custo e a gravação. É comum a
+--- todos os tipos de tarefa — o que muda entre eles é só qual prompt chega
+--- aqui.
+function chamar(tarefa, sistema, prompt): (boolean, string?)
     local ultimo_erro = ""
     for tentativa = 1, TENTATIVAS do
         local ok, texto, custo = OR.chat({
@@ -283,21 +386,17 @@ function executar(tarefa): (boolean, string?)
     return false, ultimo_erro
 end
 
---- O caminho do arquivo que uma tarefa escreve (para citar a amostra ao usuário).
+--- O caminho do arquivo que uma tarefa escreve (para citar a amostra ao
+--- usuário e para o log). Vale para os quatro tipos de tarefa porque
+--- `O.alvo_de` é quem sabe resolvê-los — este é o mesmo resolvedor que
+--- `concluir`, `falhar` e `reenfileirar` usam.
 function arquivo_da(tarefa): string
     local plano = O.plano()
     if plano == nil then
         return ""
     end
-    local cap = plano.capitulos[tarefa.cap]
-    if cap == nil then
-        return ""
-    end
-    if tarefa.tipo == "abertura" then
-        return cap.arquivo
-    end
-    local sub = cap.subs[tarefa.sub]
-    return sub ~= nil and sub.arquivo or ""
+    local alvo = O.alvo_de(plano, tarefa)
+    return (alvo ~= nil) and alvo.arquivo or ""
 end
 
 function eh_rate_limit(msg): boolean
