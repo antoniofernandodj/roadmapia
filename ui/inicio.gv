@@ -41,10 +41,25 @@ screen {
               autofocus = true,
             )
 
+            // O que não cabe num título: de onde a pessoa parte, aonde quer
+            // chegar, o que já sabe, o que deixar de fora. Vai para a
+            // entrevista (que deixa de perguntar o que já está dito aqui), para
+            // o esboço e para cada trecho da produção.
+            //
+            // Sem `on_change`, como as observações de `perguntas`: o motor já
+            // espelha o texto do editor no contexto, e um handler que
+            // reescrevesse `ctx.detalhes` a cada tecla jogaria o cursor para o
+            // fim.
+            textarea(
+              class = "campo campo-alto",
+              placeholder = "opcional — comentários adicionais: o que você já sabe, aonde quer chegar, o que deve ficar de fora, que ferramentas usar…",
+              :value = detalhes,
+            )
+
             text(
               """
                 Quanto mais contexto aqui, mais afiadas as perguntas de
-                refinamento.
+                refinamento — e o que já estiver dito não vira pergunta.
               """,
               class = ajuda,
             )

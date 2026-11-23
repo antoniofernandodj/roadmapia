@@ -23,7 +23,13 @@ RASCUNHO.ARQUIVO = "saidas/.rascunho-esboco.json"
 --- Grava (substitui) o rascunho. Síncrono — `write_file` não suspende a
 --- corrotina, então dá para chamar de qualquer handler sem virar `async`.
 --- Não faz nada se não há esboço ainda (nada a guardar).
-function RASCUNHO.salvar(esboco_json: string?, tipo: string?, assunto: string?, slug_base: string?)
+function RASCUNHO.salvar(
+    esboco_json: string?,
+    tipo: string?,
+    assunto: string?,
+    slug_base: string?,
+    detalhes: string?
+)
     if (esboco_json or "") == "" then
         return
     end
@@ -32,6 +38,9 @@ function RASCUNHO.salvar(esboco_json: string?, tipo: string?, assunto: string?, 
         tipo = tipo or "",
         assunto = assunto or "",
         slug_base = slug_base or "",
+        -- Os comentários da tela inicial: sem eles, retomar o rascunho e
+        -- confirmar o plano produziria uma obra que esqueceu metade do pedido.
+        detalhes = detalhes or "",
     })
     write_file(RASCUNHO.ARQUIVO, envelope)
 end

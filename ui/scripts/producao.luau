@@ -328,7 +328,11 @@ function executar(tarefa): (boolean, string?)
             -- O que a obra já definiu FORA deste capítulo. Sem isto, o autor
             -- de um trecho do capítulo 7 recebia meia página sobre os 120
             -- trechos escritos antes dele e reensinava o assunto do zero.
-            O.ja_ensinado(plano, tarefa.cap)
+            O.ja_ensinado(plano, tarefa.cap),
+            -- O plano dos OUTROS capítulos, que correm em paralelo com este:
+            -- protege o começo da produção, quando quase nada foi escrito.
+            O.mapa_da_obra(plano, tarefa.cap),
+            O.dono_de(plano, tarefa.cap, tarefa.sub)
         )
     end
 

@@ -55,6 +55,43 @@ local function observacoes(obra: Obra): { string }
     }
 end
 
+--- O pedido como a pessoa o fez na tela inicial: o assunto (uma linha) e, se
+--- ela escreveu, os comentários adicionais — o contexto que não cabe num
+--- título ("já programo em Go, quero focar em CLIs para Linux, nada de web").
+---
+--- Entra na entrevista e no esboço, que são os dois lugares em que o pedido é
+--- lido para DECIDIR algo: quais perguntas fazer e que obra planejar. Uma
+--- entrevista cega aos comentários pergunta de novo o que já foi respondido.
+function P.pedido(assunto: string, detalhes: string?): { string }
+    local partes = { assunto }
+    local d = (detalhes or ""):match("^%s*(.-)%s*$") or ""
+    if d ~= "" then
+        table.insert(partes, "")
+        table.insert(partes, "Comentários de quem pediu, sobre o pedido:")
+        table.insert(partes, d)
+    end
+    return partes
+end
+
+--- O texto que a produção recebe como observações: os comentários do pedido
+--- (tela inicial) e as observações gerais (fim da entrevista), juntos.
+---
+--- Juntos porque os dois são a voz de quem pediu sobre a obra INTEIRA, e o
+--- autor de um trecho não ganha nada em saber em que tela cada frase foi
+--- escrita. Guardados no plano como uma string só (`plano.observacoes`), o
+--- que mantém compatíveis os planos gravados antes deste campo existir.
+function P.observacoes_da_obra(detalhes: string?, obs: string?): string
+    local d = (detalhes or ""):match("^%s*(.-)%s*$") or ""
+    local o = (obs or ""):match("^%s*(.-)%s*$") or ""
+    if d == "" then
+        return o
+    end
+    if o == "" then
+        return "Sobre o pedido: " .. d
+    end
+    return "Sobre o pedido: " .. d .. "\n\n" .. o
+end
+
 -- ── fase 0: a entrevista ────────────────────────────────────────────────────
 
 P.SISTEMA_ENTREVISTA = [[
@@ -83,12 +120,30 @@ exemplos, que tipo de exemplo serve, o que deve ficar de fora.
 --- Pede o questionário de refinamento sobre o assunto.
 --- `anteriores` (opcional) é a transcrição do que já foi respondido, para uma
 --- rodada de aprofundamento que não repete o que já se sabe.
-function P.entrevista(assunto: string, tipo: string?, quantidade: number, anteriores: string?): string
+---
+--- `detalhes` (opcional) são os comentários adicionais da tela inicial: o que
+--- já foi dito ali não precisa — nem deve — virar pergunta.
+function P.entrevista(
+    assunto: string,
+    tipo: string?,
+    quantidade: number,
+    anteriores: string?,
+    detalhes: string?
+): string
     local r = E.rotulo(tipo)
     local partes = {
         "Alguém quer que você produza " .. r.artigo .. " (" .. r.resumo .. ") sobre:",
         "",
-        assunto,
+    }
+    for _, linha in ipairs(P.pedido(assunto, detalhes)) do
+        table.insert(partes, linha)
+    end
+    if (detalhes or ""):match("%S") then
+        table.insert(partes, "")
+        table.insert(partes, "Não pergunte o que esses comentários já respondem; use-os para")
+        table.insert(partes, "ir direto ao que ainda falta saber.")
+    end
+    local resto = {
         "",
         "O material será TEXTO ESCRITO em Markdown — só isso, nada de vídeo, aula",
         "ou plataforma. Não pergunte sobre formato nem ofereça opções de mídia.",
@@ -97,6 +152,9 @@ function P.entrevista(assunto: string, tipo: string?, quantidade: number, anteri
         "o material final. Elas devem ser específicas DESTE assunto — se o assunto",
         "fosse outro, as perguntas teriam de ser outras.",
     }
+    for _, linha in ipairs(resto) do
+        table.insert(partes, linha)
+    end
 
     if anteriores ~= nil and anteriores ~= "" then
         table.insert(partes, "")
@@ -149,18 +207,34 @@ Princípios:
 --- chegam aqui, e não só nos trechos, porque um esboço cego a elas planejaria
 --- uma obra que cada trecho depois teria de contrariar sozinho — e "sem código"
 --- não conserta um capítulo que só existe para mostrar código.
-function P.esboco(assunto: string, tipo: string?, transcricao: string, n_unidades: number, n_sub: number, obs: string?): string
+---
+--- `detalhes` são os comentários adicionais da tela inicial (ver `P.pedido`).
+function P.esboco(
+    assunto: string,
+    tipo: string?,
+    transcricao: string,
+    n_unidades: number,
+    n_sub: number,
+    obs: string?,
+    detalhes: string?
+): string
     local r = E.rotulo(tipo)
     local partes = {
         "Planeje " .. r.artigo .. " completo sobre:",
         "",
-        assunto,
+    }
+    for _, linha in ipairs(P.pedido(assunto, detalhes)) do
+        table.insert(partes, linha)
+    end
+    for _, linha in ipairs({
         "",
         "A entrevista de refinamento com quem pediu foi esta:",
         "",
         transcricao,
         "",
-    }
+    }) do
+        table.insert(partes, linha)
+    end
 
     for _, linha in ipairs(observacoes({ titulo = "", resumo = "", publico = "", observacoes = obs })) do
         table.insert(partes, linha)
@@ -326,7 +400,9 @@ function P.secao(
     capitulo: Capitulo,
     sub: Sub,
     ctx_vizinhos: Vizinhanca,
-    ensinado: string?
+    ensinado: string?,
+    mapa: string?,
+    dono_de: string?
 ): string
     local partes = {
         "Obra: **" .. obra.titulo .. "**",
@@ -342,6 +418,14 @@ function P.secao(
         sub.foco or sub.titulo,
         "",
     }
+
+    -- O outro lado do mapa: os repetidores foram avisados de que X mora aqui,
+    -- então este trecho precisa ensiná-lo de verdade, e não "por cima".
+    if dono_de ~= nil and dono_de ~= "" then
+        table.insert(partes, "Este trecho é o LUGAR PRÓPRIO destes assuntos na obra — os outros")
+        table.insert(partes, "trechos vão apenas citá-lo, então ensine-os a fundo aqui: " .. dono_de)
+        table.insert(partes, "")
+    end
 
     if ctx_vizinhos.antes ~= "" then
         table.insert(partes, "Já foi ensinado antes deste trecho (ASSUMA como conhecido,")
@@ -371,6 +455,20 @@ function P.secao(
     if ctx_vizinhos.depois ~= "" then
         table.insert(partes, "Vem DEPOIS deste trecho (NÃO invada, no máximo cite de passagem):")
         table.insert(partes, ctx_vizinhos.depois)
+        table.insert(partes, "")
+    end
+
+    -- O plano inteiro visto de fora deste capítulo. É o que protege o começo
+    -- da produção: os capítulos são escritos em paralelo, e o bloco "já
+    -- definido" acima só conhece o que já foi ESCRITO — quase nada, no início.
+    -- O plano existe inteiro desde antes da primeira chamada.
+    if mapa ~= nil and mapa ~= "" then
+        table.insert(partes, "MAPA DA OBRA — os trechos dos OUTROS capítulos, que outros autores")
+        table.insert(partes, "escrevem em paralelo com você. Cada assunto destes tem lugar próprio:")
+        table.insert(partes, "se o seu foco esbarrar num deles, use só o necessário e cite o endereço")
+        table.insert(partes, "(\"ver 7.1\") — NÃO o ensine aqui. Os marcados com [dono de: …] são")
+        table.insert(partes, "assuntos que já foram disputados no plano e têm dono decidido:")
+        table.insert(partes, mapa)
         table.insert(partes, "")
     end
 

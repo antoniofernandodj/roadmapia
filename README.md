@@ -20,9 +20,12 @@ Interface em [glacier-ui](../glacier-ui) 0.168 (markup `.gv` em blocos + Luau), 
                             └─"+ aprofundar"─┘  cada
 ```
 
-1. **`inicio`** — um campo para o assunto e três checkboxes (roadmap / curso /
-   guia). O botão principal **não submete**: ele leva o assunto à IA e volta com
-   um questionário sob medida. Marcando **curso**, aparece um painel a mais:
+1. **`inicio`** — um campo para o assunto, uma área de **comentários
+   adicionais** (o que não cabe num título: de onde se parte, aonde se quer
+   chegar, o que fica de fora) e três checkboxes (roadmap / curso / guia). O
+   botão principal **não submete**: ele leva o assunto e os comentários à IA e
+   volta com um questionário sob medida, que não pergunta o que os comentários
+   já responderam. Marcando **curso**, aparece um painel a mais:
    quantos exercícios por capítulo e quantas questões na prova final (ver
    [Exercícios e prova](#exercícios-e-prova)).
 2. **`perguntas`** — uma pergunta por vez. Cada uma traz opções sugeridas pela IA
@@ -118,6 +121,10 @@ do componente é lida uma última vez e migrada para o `.ini` no primeiro clique
 No fim da entrevista há uma textarea livre: tom, profundidade, o que evitar, em
 que linguagem os exemplos. A entrevista é gerada pela IA a partir do assunto,
 então ela cobre o **assunto** — nunca o *como*, e era o que faltava.
+
+Os **comentários adicionais** da tela inicial são a mesma voz, escrita antes da
+entrevista: eles entram na própria entrevista (para ela não perguntar o que já
+foi dito) e, a partir daí, seguem o mesmo caminho das observações.
 
 O texto entra nos **três** prompts: no esboço, em cada trecho e em cada abertura
 de capítulo. No esboço porque um plano cego a elas montaria uma obra que cada
@@ -221,6 +228,17 @@ Duas correções, nenhuma custando chamada:
    contexto que um trecho recebe sobre o resto da obra passou de 500 para
    **5.702 caracteres**, e agora cresce com a obra em vez de encolher.
 
+O registro tem um ponto cego: ele só sabe o que já foi **escrito**, e no começo
+da produção os capítulos correm em paralelo — quando 2.1 é escrito, o capítulo
+1 também está pela metade. Quem cobre essa janela é o **mapa da obra**: cada
+trecho recebe os títulos de todos os trechos dos **outros** capítulos (o plano,
+que existe inteiro antes da primeira chamada), com a instrução de citar o
+endereço em vez de ensinar o que tem lugar próprio. Os assuntos que a auditoria
+disputou aparecem com o dono marcado (`[dono de: unsafe]`), e o trecho dono é
+avisado de que é ele quem ensina a fundo. Só títulos, nunca o foco: numa obra
+10 × 20 são cerca de 180 linhas, da ordem de 2,5 mil tokens de entrada por
+trecho.
+
 De graça, sai o placar: quando um trecho declara definir algo que outro capítulo
 já definiu, a colisão vira uma linha na tela de produção, com quem era o dono.
 Sem número, "a repetição diminuiu" seria uma impressão.
@@ -322,7 +340,7 @@ e a contabilidade de custo, com `fetch` enlatado.
 |---|---|
 | `src/main.rs` | casca fina: registra as telas, carrega o `.gss`, liga a config ao contexto, e o `--check`. |
 | `src/config.rs` | o `.ini`: onde procurar, ler, e gravar uma chave sem estragar o resto. |
-| `ui/inicio.gv` · `scripts/inicio.luau` | assunto, tipo, credenciais; a ação `refinar`. |
+| `ui/inicio.gv` · `scripts/inicio.luau` | assunto, comentários adicionais, tipo, credenciais; a ação `refinar`. |
 | `ui/perguntas.gv` · `scripts/perguntas.luau` | a entrevista, as observações gerais, e `alternar`/`aprofundar`/`gerar` (fase 1). |
 | `ui/revisao.gv` · `scripts/revisao.luau` | o esboço da IA antes de custar: editar, apagar, reordenar. |
 | `ui/producao.gv` · `scripts/producao.luau` | o pool de workers (fase 2), avanço, custo, refazer falhas. |

@@ -806,6 +806,136 @@ function M.rodar()
     conferir(ex_com:find("- unsafe (1.9)", 1, true) ~= nil,
         "os exercícios também recebem o registro — senão cobram como assunto novo")
 
+    -- ── 11. o mapa da obra: o plano protege o começo paralelo ──────────────────
+    --
+    -- O registro da seção 10 só conhece o que já foi ESCRITO. No começo da
+    -- produção os capítulos correm em paralelo e ele está vazio: quando 2.1 é
+    -- escrito, o capítulo 1 também está pela metade. O plano, porém, existe
+    -- inteiro desde antes da primeira chamada — o mapa é ele, visto de fora do
+    -- capítulo.
+
+    local R = require("lib/revisao")
+
+    -- A janela cega, medida: o PRIMEIRO trecho de cada capítulo sai antes de
+    -- qualquer outro capítulo ter terminado um trecho sequer.
+    O.gravar_plano(assert(O.montar(esboco(10, 20), "mapa")))
+    local pl_m = O.plano()
+    local t_cego = nil
+    for _ = 1, 6 do
+        local t = O.tomar_tarefa()
+        if t ~= nil and t.cap == 2 then
+            t_cego = t
+        end
+    end
+    conferir(t_cego ~= nil and t_cego.sub == 1, "a fila entrega 2.1 na primeira leva, em paralelo")
+    conferir(O.ja_ensinado(O.plano(), 2) == "",
+        "…quando o registro ainda não sabe nada dos outros capítulos (a janela cega)")
+    local mapa_2 = O.mapa_da_obra(pl_m, 2)
+    conferir(mapa_2:find("1.20 Trecho 1.20", 1, true) ~= nil
+            and mapa_2:find("10.1 Trecho 10.1", 1, true) ~= nil,
+        "…mas o mapa já traz o plano inteiro dos outros capítulos, antes e depois")
+    conferir(mapa_2:find("Trecho 2.", 1, true) == nil,
+        "o próprio capítulo fica fora do mapa — a vizinhança já o cobre")
+
+    -- O custo: só títulos, nunca o foco. Numa obra 10 × 20 são 180 linhas.
+    -- Fica registrado para a conta não virar surpresa: ~4 mil caracteres por
+    -- chamada com estes títulos curtos de teste; com títulos reais (~45
+    -- caracteres), algo como 9 a 10 mil — da ordem de 2,5 mil tokens de
+    -- entrada por trecho.
+    conferir(#mapa_2 < 6000, "o mapa de uma obra 10 × 20 tem tamanho de lista de títulos",
+        tostring(#mapa_2) .. " caracteres")
+
+    -- Os donos que a auditoria decidiu marcam o mapa, e avisam o próprio dono.
+    O.gravar_plano(assert(O.montar(esboco(3, 2), "donos", nil, nil,
+        { { assunto = "unsafe", dono = "3.1" } })))
+    local pl_d = O.plano()
+    conferir(O.mapa_da_obra(pl_d, 1):find("3.1 Trecho 3.1  [dono de: unsafe]", 1, true) ~= nil,
+        "o mapa marca o dono de um assunto disputado", O.mapa_da_obra(pl_d, 1))
+    conferir(O.dono_de(pl_d, 3, 1) == "unsafe", "o trecho dono sabe que é o dono")
+    conferir(O.dono_de(pl_d, 1, 1) == "", "…e os outros não")
+    local antigo_d = assert(O.montar(esboco(2, 1), "sem-donos"))
+    antigo_d.donos = nil
+    conferir(O.mapa_da_obra(antigo_d, 1):find("dono de", 1, true) == nil
+            and O.dono_de(antigo_d, 2, 1) == "",
+        "plano gravado antes dos donos ganha o mapa, sem marca nenhuma")
+
+    local sec_mapa = P.secao(com_obs, com_obs.capitulos[1], com_obs.capitulos[1].subs[1],
+        vizinhos, "", O.mapa_da_obra(pl_d, 1), "")
+    conferir(sec_mapa:find("MAPA DA OBRA", 1, true) ~= nil
+            and sec_mapa:find("[dono de: unsafe]", 1, true) ~= nil,
+        "o mapa entra no prompt do trecho")
+    conferir(sec_mapa:find("NÃO o ensine aqui", 1, true) ~= nil,
+        "…com a instrução de citar em vez de ensinar")
+    local sec_dono = P.secao(com_obs, com_obs.capitulos[1], com_obs.capitulos[1].subs[1],
+        vizinhos, "", "", "unsafe")
+    conferir(sec_dono:find("LUGAR PRÓPRIO", 1, true) ~= nil
+            and sec_dono:find("unsafe", 1, true) ~= nil,
+        "o prompt do dono manda ensinar a fundo")
+    conferir(sec_sem:find("MAPA DA OBRA", 1, true) == nil
+            and sec_sem:find("LUGAR PRÓPRIO", 1, true) == nil,
+        "sem mapa nem dono, nenhum cabeçalho órfão")
+
+    -- Da auditoria ao plano. O dono chega como endereço ("2.1"), que só vale
+    -- para o esboço daquele momento — e a revisão pode reordenar tudo antes
+    -- de confirmar. Por isso ele é guardado pelo título.
+    limpar_ctx()
+    local e_aud = esboco(2, 2)
+    e_aud.capitulos[1].subcapitulos[1].titulo = "Visão geral de X"
+    e_aud.capitulos[2].subcapitulos[1].titulo = "X por dentro"
+    R.set_esboco(e_aud)
+    R.set_achados({
+        { cap = 1, sub = 1, assunto = "X", dono = "2.1", motivo = "m", foco_novo = "assuma X" },
+        { cap = 1, sub = 2, assunto = "Y", dono = "2.2", motivo = "m", foco_novo = "assuma Y" },
+    }, e_aud)
+    R.aplicar_todos()
+    R.desfazer_achado(2)
+    conferir(R.achados()[1].dono_titulo == "X por dentro",
+        "a auditoria guarda o título do dono, não só o endereço")
+
+    -- A pessoa troca os capítulos de lugar na revisão.
+    local e_rev = R.esboco()
+    e_rev.capitulos[1], e_rev.capitulos[2] = e_rev.capitulos[2], e_rev.capitulos[1]
+    local donos = R.donos(e_rev)
+    conferir(#donos == 1 and donos[1].assunto == "X" and donos[1].dono == "1.1",
+        "o dono acompanha o trecho quando os capítulos mudam de lugar",
+        json.encode(donos))
+    conferir(#donos == 1, "…e um achado desfeito não marca dono nenhum")
+    e_rev.capitulos[1].subcapitulos[1].titulo = "renomeado"
+    conferir(#R.donos(e_rev) == 0,
+        "dono apagado ou renomeado sai do mapa em vez de apontar o trecho errado")
+
+    -- ── 12. os comentários da tela inicial ──────────────────────────────────────
+    --
+    -- O assunto é uma linha; o que não cabe nele ("já programo em Go, quero
+    -- CLIs para Linux, nada de web") chega por um campo próprio, e tem de
+    -- alcançar as três fases: a entrevista, o esboço e a produção.
+
+    local DET = "Já programo em Go; quero CLIs para Linux; nada de web."
+    local ent = P.entrevista("Rust", "curso", 6, nil, DET)
+    conferir(ent:find(DET, 1, true) ~= nil, "os comentários entram na entrevista")
+    conferir(ent:find("Não pergunte o que esses comentários já respondem", 1, true) ~= nil,
+        "…com a instrução de não perguntar o que já foi dito")
+    local ent_sem = P.entrevista("Rust", "curso", 6, nil, "   ")
+    conferir(ent_sem:find("Comentários de quem pediu", 1, true) == nil,
+        "comentário em branco não deixa cabeçalho órfão")
+    local apr = P.entrevista("Rust", "curso", 4, "P: nível? R: médio", DET)
+    conferir(apr:find(DET, 1, true) ~= nil and apr:find("nível?", 1, true) ~= nil,
+        "o aprofundamento recebe os comentários e a transcrição")
+
+    local esb = P.esboco("Rust", "curso", "P: nível? R: médio", 10, 20, "sem analogias", DET)
+    conferir(esb:find(DET, 1, true) ~= nil and esb:find("sem analogias", 1, true) ~= nil,
+        "o esboço recebe os comentários e as observações")
+
+    conferir(P.observacoes_da_obra("", "obs") == "obs", "sem comentários, ficam só as observações")
+    conferir(P.observacoes_da_obra(DET, "") == "Sobre o pedido: " .. DET,
+        "sem observações, ficam só os comentários")
+    local juntas = P.observacoes_da_obra(DET, "sem analogias")
+    conferir(juntas:find(DET, 1, true) ~= nil and juntas:find("sem analogias", 1, true) ~= nil,
+        "os dois chegam juntos ao plano — e daí a cada trecho")
+    local pl_det = assert(O.montar(esboco(1, 1), "det", juntas))
+    local sec_det = P.secao(pl_det, pl_det.capitulos[1], pl_det.capitulos[1].subs[1], vizinhos)
+    conferir(sec_det:find(DET, 1, true) ~= nil, "…e o trecho os recebe")
+
     write_file = write_file_real
     limpar_ctx()
 end

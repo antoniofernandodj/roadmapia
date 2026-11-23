@@ -331,10 +331,7 @@ como assunto novo — a herança que a §5 previa.
   deixa passar repetição, nunca inventa uma. É o lado certo de errar num sinal
   que a pessoa lê como "isto está duplicado", mas significa que o placar é um
   piso, não um total.
-- **A janela cega do começo continua lá.** Quando o trecho 2.1 é escrito, quase
-  nada foi escrito ainda. Quem ataca isso é a auditoria do esboço, que agora
-  roda sempre — mas ela corrige o PLANO, e um plano corrigido ainda depende de
-  o autor de cada trecho respeitar o foco que recebeu.
+- **A janela cega do começo** — fechada pela §7, com o mapa da obra.
 - **Não há como reconferir depois de editar o plano à mão.** A auditoria roda
   quando o esboço é gerado. Se você acrescentar cinco capítulos na revisão, eles
   não passam por ela. Um botão de reconferência resolveria, mas seria de novo um
@@ -347,3 +344,55 @@ como assunto novo — a herança que a §5 previa.
   falhas" só reenfileira o que deu erro. Ficou de fora de propósito — mexer
   nisso pede tirar do registro os conceitos do trecho refeito, senão ele
   colidiria consigo mesmo.
+
+---
+
+## 7. O mapa da obra: o plano chega a quem escreve
+
+A §6.4 deixava a janela cega do começo em aberto: o registro só sabe o que já
+foi **escrito**, e os capítulos correm em paralelo. Quando 2.1 é escrito, o
+capítulo 1 está pela metade e o registro está vazio — medido na suíte (seção
+11 de `tests/luau/fila.luau`): 2.1 sai na primeira leva de seis, com
+`O.ja_ensinado` devolvendo nada.
+
+Mas o plano existe inteiro desde antes da primeira chamada paga, e ele já diz
+onde cada assunto mora. Faltava entregá-lo: cada trecho recebia, dos outros
+capítulos, só título e resumo (dos anteriores) ou só o título do capítulo (dos
+posteriores).
+
+### 7.1 O que entrou
+
+| Peça | Onde |
+|---|---|
+| **Mapa da obra**: os títulos de todos os trechos dos OUTROS capítulos, com o endereço, e a instrução de citar ("ver 7.1") em vez de ensinar | `O.mapa_da_obra`, bloco `MAPA DA OBRA` em `P.secao` |
+| **Donos da auditoria**: o `assunto → dono` que a auditoria já devolvia e era descartado agora vai para o plano (`plano.donos`) e marca o mapa (`[dono de: unsafe]`) | `R.donos`, `O.montar` |
+| **O dono é avisado**: o trecho dono recebe "este trecho é o lugar próprio destes assuntos — ensine a fundo", senão ele também apresentaria o assunto "por cima" | `O.dono_de`, `P.secao` |
+
+Zero chamadas a mais.
+
+### 7.2 Decisões
+
+- **Só títulos, nunca o foco.** O foco de 200 trechos × 200 chamadas seria o
+  prompt inteiro. O título basta para reconhecer que um assunto tem casa
+  própria. Numa obra 10 × 20 são ~180 linhas; com títulos reais (~45
+  caracteres), 9 a 10 mil caracteres, da ordem de **2,5 mil tokens de entrada
+  por trecho**. Entrada é mais barata que saída, e o app já mede o custo real
+  por chamada.
+- **O próprio capítulo fica fora do mapa**: `O.vizinhanca` já o cobre, com a
+  síntese do que foi escrito antes e o título do que vem depois.
+- **O dono é guardado pelo título, não pelo endereço.** A auditoria devolve
+  "7.1", que vale só para o esboço daquele momento; a revisão pode reordenar
+  capítulos antes de confirmar. `R.set_achados` anota o título do dono e
+  `R.donos` o reencontra no esboço final. Dono apagado ou renomeado sai do mapa
+  em vez de apontar para o trecho errado.
+- **Só achados aplicados marcam dono.** Um achado desfeito é uma discordância
+  registrada; marcar um dono que a pessoa recusou contradiria a decisão dela.
+- **Planos antigos** (sem `donos`) recebem o mapa sem marca nenhuma.
+
+### 7.3 O que continua limitado
+
+- O mapa é uma instrução, não uma garantia: um trecho ainda pode ignorar o
+  plano. O placar (§3.5) continua sendo quem mede se ignorou.
+- Capítulos acrescentados à mão na revisão entram no mapa (ele é o plano
+  confirmado), mas não passam pela auditoria — não têm dono marcado.
+

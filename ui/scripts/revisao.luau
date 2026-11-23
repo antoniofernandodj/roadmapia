@@ -226,7 +226,7 @@ function gerar_de_novo(): ()
         -- observações para evitar. "Gerar de novo" tem de gerar o MESMO tipo
         -- de esboço que o primeiro, não um mais burro.
         user = P.esboco(ctx.assunto, ctx.tipo, E.transcricao(), CAPITULOS, SUBCAPITULOS,
-            ctx.observacoes),
+            ctx.observacoes, ctx.detalhes),
         temperature = 0.5,
         max_tokens = 16000,
     })
@@ -279,8 +279,9 @@ function confirmar(): ()
     local plano, erro_montar = O.montar(
         e,
         ctx.esboco_slug_base or O.slug(ctx.assunto or "obra"),
-        ctx.observacoes,
-        A.config(ctx.tipo)
+        P.observacoes_da_obra(ctx.detalhes, ctx.observacoes),
+        A.config(ctx.tipo),
+        R.donos(e)
     )
     if plano == nil then
         E.erro(erro_montar)

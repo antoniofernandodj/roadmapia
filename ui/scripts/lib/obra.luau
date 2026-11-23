@@ -116,6 +116,18 @@ export type Plano = {
     -- tinha definido. Sai de graça do registro acima, e é o placar: sem ele,
     -- "a repetição diminuiu" seria uma impressão.
     repeticoes: { Repeticao }?,
+    -- Quem é o DONO de cada assunto que a auditoria do esboço achou planejado
+    -- em dois lugares (ver `R.donos`). Vai para o mapa da obra que cada trecho
+    -- recebe: o repetidor já teve o foco reescrito, mas o dono não sabia que
+    -- era o dono, e um trecho que a auditoria não pegou não sabia de nada.
+    -- `nil` em planos de versões anteriores.
+    donos: { Dono }?,
+}
+
+--- Um assunto e o endereço do trecho que o ensina a fundo ("7.1").
+export type Dono = {
+    assunto: string,
+    dono: string,
 }
 
 --- Um conceito definido por um trecho, com quem o definiu primeiro.
@@ -210,7 +222,8 @@ function O.montar(
     esboco: any,
     slug_base: string,
     observacoes: string?,
-    avaliacao: { exercicios_por_capitulo: number, questoes_prova: number }?
+    avaliacao: { exercicios_por_capitulo: number, questoes_prova: number }?,
+    donos: { Dono }?
 ): (Plano?, string?)
     if type(esboco) ~= "table" or type(esboco.capitulos) ~= "table" then
         return nil, "O modelo não devolveu um esboço com capítulos."
@@ -234,6 +247,9 @@ function O.montar(
         prova = json.array({}),
         ensinado = json.array({}),
         repeticoes = json.array({}),
+        -- Vêm da auditoria, já resolvidos para os endereços do plano que está
+        -- sendo montado (ver `R.donos`).
+        donos = json.array(donos or {}),
     }
 
     for i, c in ipairs(esboco.capitulos) do
@@ -863,6 +879,68 @@ function O.ja_ensinado(plano: Plano, ci: number): string
         end
     end
     return table.concat(linhas, "\n")
+end
+
+-- ── o mapa da obra ──────────────────────────────────────────────────────────
+--
+-- O registro acima só sabe o que já foi ESCRITO. No começo da produção isso é
+-- quase nada: os capítulos correm em paralelo, e quando o trecho 2.3 é escrito
+-- o capítulo 1 também está pela metade. É a "janela cega do começo".
+--
+-- O plano, porém, existe inteiro desde antes da primeira chamada paga — e ele
+-- já diz onde cada assunto mora. Este mapa é o plano visto de fora do
+-- capítulo: os títulos dos trechos dos OUTROS capítulos, com o dono marcado
+-- onde a auditoria decidiu um. Só títulos, e não o foco: o foco de 200
+-- trechos multiplicado por 200 chamadas seria o prompt inteiro; o título é o
+-- bastante para o autor reconhecer que um assunto tem casa própria.
+--
+-- O próprio capítulo fica de fora: `O.vizinhanca` já o cobre, com a síntese
+-- do que foi escrito antes e o título do que vem depois.
+
+--- Os donos do plano, por endereço: `{ ["7.1"] = { "unsafe", ... } }`.
+local function donos_por_endereco(plano: Plano): { [string]: { string } }
+    local por = {}
+    local lista = plano.donos
+    if type(lista) ~= "table" then
+        return por
+    end
+    for _, d in ipairs(lista) do
+        if type(d) == "table" and type(d.dono) == "string" and type(d.assunto) == "string" then
+            por[d.dono] = por[d.dono] or {}
+            table.insert(por[d.dono], d.assunto)
+        end
+    end
+    return por
+end
+
+--- O mapa que vai no prompt de um trecho do capítulo `ci`.
+function O.mapa_da_obra(plano: Plano, ci: number): string
+    local por = donos_por_endereco(plano)
+    local linhas = {}
+    for k, c in ipairs(plano.capitulos) do
+        if k ~= ci then
+            table.insert(linhas, "cap. " .. k .. " — " .. c.titulo)
+            for j, s in ipairs(c.subs) do
+                local end_ = O.endereco(k, j)
+                local linha = "  " .. end_ .. " " .. s.titulo
+                local assuntos = por[end_]
+                if assuntos ~= nil then
+                    linha = linha .. "  [dono de: " .. table.concat(assuntos, "; ") .. "]"
+                end
+                table.insert(linhas, linha)
+            end
+        end
+    end
+    return table.concat(linhas, "\n")
+end
+
+--- Os assuntos de que o trecho `ci.si` é o dono, separados por "; ". Vazio
+--- quando não é dono de nada. É a outra metade do mapa: o repetidor foi
+--- avisado de que não deve ensinar X, e o dono precisa saber que os outros
+--- vão se apoiar nele — senão ele também apresenta X "por cima".
+function O.dono_de(plano: Plano, ci: number, si: number): string
+    local assuntos = donos_por_endereco(plano)[O.endereco(ci, si)]
+    return (assuntos ~= nil) and table.concat(assuntos, "; ") or ""
 end
 
 --- O contexto de um lote de exercícios: as linhas dos trechos que ele COBRE, e

@@ -39,7 +39,7 @@ end
 --- fechar o app no meio da revisão.
 function R.set_esboco(e: any)
     ctx.esboco_json = json.encode(e)
-    Rascunho.salvar(ctx.esboco_json, ctx.tipo, ctx.assunto, ctx.esboco_slug_base)
+    Rascunho.salvar(ctx.esboco_json, ctx.tipo, ctx.assunto, ctx.esboco_slug_base, ctx.detalhes)
 end
 
 -- ── capítulos ────────────────────────────────────────────────────────────────
@@ -219,6 +219,19 @@ function R.set_achados(lista: any, e: any)
             local subs = (cap ~= nil and type(cap.subcapitulos) == "table")
                 and cap.subcapitulos or nil
             local sub = (subs ~= nil and si ~= nil) and subs[si] or nil
+            -- O dono chega como endereço ("7.1"), que vale só para o plano
+            -- de AGORA. Guarda-se o título dele, pelo mesmo motivo da trava
+            -- abaixo: é o título que sobrevive a uma reordenação na revisão.
+            local dono_titulo = ""
+            local dc, ds = tostring(a.dono or ""):match("^%s*(%d+)%.(%d+)%s*$")
+            if dc ~= nil then
+                local cd = e.capitulos[tonumber(dc)]
+                local sd = (cd ~= nil and type(cd.subcapitulos) == "table")
+                    and cd.subcapitulos[tonumber(ds)] or nil
+                if sd ~= nil then
+                    dono_titulo = tostring(sd.titulo)
+                end
+            end
             if sub ~= nil and type(a.foco_novo) == "string" and a.foco_novo ~= "" then
                 table.insert(saida, {
                     cap = ci,
@@ -227,6 +240,7 @@ function R.set_achados(lista: any, e: any)
                     sub_titulo = tostring(sub.titulo),
                     assunto = tostring(a.assunto or "assunto repetido"),
                     dono = tostring(a.dono or ""),
+                    dono_titulo = dono_titulo,
                     motivo = tostring(a.motivo or ""),
                     foco_novo = a.foco_novo,
                     -- Guardado para o "desfazer": a correção é aplicada
@@ -361,6 +375,41 @@ function R.auditar(): (number, string?)
     R.set_achados(lista, atual)
     local aplicados = R.aplicar_todos()
     return aplicados, nil
+end
+
+--- Os donos que a auditoria decidiu, com o endereço que cada um tem NO
+--- ESBOÇO `e` — o que vai virar plano, depois de toda edição da revisão.
+---
+--- Só entram os achados APLICADOS: um achado desfeito é uma discordância
+--- registrada, e marcar um dono que a pessoa recusou contradiria a decisão
+--- dela. O dono é procurado pelo título; se ele foi apagado ou renomeado, o
+--- assunto sai do mapa em vez de apontar para o trecho errado.
+function R.donos(e: any): { any }
+    local saida = {}
+    if e == nil or type(e.capitulos) ~= "table" then
+        return saida
+    end
+    local endereco_de = {}
+    for i, c in ipairs(e.capitulos) do
+        local subs = (type(c.subcapitulos) == "table") and c.subcapitulos or {}
+        for j, s in ipairs(subs) do
+            local t = tostring(s.titulo)
+            if endereco_de[t] == nil then
+                endereco_de[t] = tostring(i) .. "." .. tostring(j)
+            end
+        end
+    end
+    local visto = {}
+    for _, a in ipairs(R.achados()) do
+        local dono = (a.aplicado and type(a.dono_titulo) == "string")
+            and endereco_de[a.dono_titulo] or nil
+        local assunto = tostring(a.assunto or "")
+        if dono ~= nil and assunto ~= "" and not visto[assunto] then
+            visto[assunto] = true
+            table.insert(saida, { assunto = assunto, dono = dono })
+        end
+    end
+    return saida
 end
 
 -- ── validação ────────────────────────────────────────────────────────────────

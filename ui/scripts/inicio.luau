@@ -54,6 +54,11 @@ function init(): ()
         ctx.modelo = OR.MODELO_PADRAO
     end
     ctx.assunto = ctx.assunto or ""
+    -- Os comentários adicionais. Uma vez, no registro, como as observações de
+    -- `perguntas`: daqui em diante quem mantém a chave é o motor, que espelha
+    -- o `textarea` no contexto a cada tecla — escrever aqui de novo jogaria o
+    -- cursor para o fim.
+    ctx.detalhes = ctx.detalhes or ""
 
     if ctx.tipo == nil or ctx.tipo == "" then
         aplicar_tipo("roadmap")
@@ -163,7 +168,7 @@ function refinar(): ()
         key = ctx.api_key,
         model = ctx.modelo,
         system = P.SISTEMA_ENTREVISTA,
-        user = P.entrevista(assunto, ctx.tipo, PERGUNTAS_POR_RODADA, nil),
+        user = P.entrevista(assunto, ctx.tipo, PERGUNTAS_POR_RODADA, nil, ctx.detalhes),
     })
 
     liberar()
@@ -224,6 +229,7 @@ function continuar_rascunho(): ()
         return
     end
     ctx.assunto = d.assunto or ""
+    ctx.detalhes = d.detalhes or ""
     aplicar_tipo((d.tipo ~= nil and d.tipo ~= "") and d.tipo or "roadmap")
     ctx.esboco_json = d.esboco_json
     ctx.esboco_slug_base = d.slug_base or ""

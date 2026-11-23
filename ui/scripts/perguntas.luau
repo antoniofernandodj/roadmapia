@@ -129,7 +129,8 @@ function aprofundar(): ()
             ctx.assunto,
             ctx.tipo,
             PERGUNTAS_POR_APROFUNDAMENTO,
-            E.transcricao()
+            E.transcricao(),
+            ctx.detalhes
         ),
     })
 
@@ -200,7 +201,7 @@ function gerar(): ()
         model = ctx.modelo,
         system = P.SISTEMA_ESBOCO,
         user = P.esboco(ctx.assunto, ctx.tipo, E.transcricao(), CAPITULOS, SUBCAPITULOS,
-            ctx.observacoes),
+            ctx.observacoes, ctx.detalhes),
         temperature = 0.5,
         -- O esboço inteiro (10 × 20 títulos + focos) é grande: sem teto folgado
         -- ele volta cortado, e um JSON cortado não decodifica.
