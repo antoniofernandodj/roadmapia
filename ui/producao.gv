@@ -18,14 +18,14 @@ screen {
         }
 
         button("← respostas", class = btn-sutil, navigate_to = perguntas)
-        button(início, class = btn-sutil, navigate_to = inicio)
+        button("← início", class = btn-sutil, navigate_to = inicio)
       }
 
       // ── sem plano ainda ──────────────────────────────────────────────
       column(class = painel-alto, if = @tem_obra, not_equals = true) {
         text("Nada planejado ainda", class = pergunta)
 
-        text("Responda a entrevista e clique em Generate.", class = ajuda)
+        text("Responda a entrevista e clique em Gerar.", class = ajuda)
 
         button(
           "Ir para as perguntas",
@@ -124,7 +124,7 @@ screen {
           disabled = @nada_a_fazer,
         )
 
-        button(Parar, class = btn, on_click = parar, hidden = @parado)
+        button("Parar", class = btn, on_click = parar, hidden = @parado)
 
         button(
           "Refazer falhas",

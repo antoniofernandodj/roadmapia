@@ -545,6 +545,10 @@ function R.projetar()
             resumo = type(c.resumo) == "string" and c.resumo or "",
             n_subs = tostring(n_subs),
             selecionado = (tostring(i) == ctx.cap_sel) and "true" or "false",
+            -- As pontas não têm para onde subir/descer: o botão fica apagado
+            -- em vez de aceitar um clique que não faz nada.
+            primeiro = (i == 1) and "true" or "false",
+            ultimo = (i == #e.capitulos) and "true" or "false",
         })
     end
     ctx.rev_capitulos_ui = json.encode(json.array(linhas))

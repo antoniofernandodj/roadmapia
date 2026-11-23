@@ -134,6 +134,17 @@
 .btn-sutil:hover    { background: var(--borda); text_color: var(--texto); }
 .btn-sutil:disabled { background: #16161F; text_color: #CDD6F44D; }
 
+/* Ação destrutiva (excluir capítulo, remover subcapítulo): a forma do
+   `.btn-sutil`, mas o rótulo em vermelho — lê-se "isto apaga" antes do
+   clique. */
+.btn-perigo          { height: 36; padding: 8 16; border_radius: 8; color: var(--base); text_color: var(--vermelho); transition: all 120ms ease-out; }
+.btn-perigo:hover    { background: #3B2533; text_color: #F7A8BE; }
+.btn-perigo:disabled { background: #16161F; text_color: #CDD6F44D; }
+
+/* O conteúdo rolável afasta-se da barra de rolagem, que senão pinta por cima
+   da borda direita dos painéis. */
+.calha  { padding: 0 16 0 0; }
+
 /* Uma opção sugerida pela IA. A cor de fundo vem inline (o script a calcula a
    partir do estado de seleção), então aqui ficam só forma e espaçamento. */
 .opcao        { width: fill; padding: 12 16; border_radius: 10; text_color: var(--texto); }

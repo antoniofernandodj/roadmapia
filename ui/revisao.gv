@@ -28,7 +28,7 @@ screen {
       column(class = painel-alto, if = @rev_tem_esboco, not_equals = true) {
         text("Nada planejado ainda", class = pergunta)
 
-        text("Responda a entrevista e clique em Generate.", class = ajuda)
+        text("Responda a entrevista e clique em Gerar.", class = ajuda)
 
         button(
           "Ir para as perguntas",
@@ -37,221 +37,244 @@ screen {
         )
       }
 
+      // Cabeçalho e ações ficam fixos; TODO o resto rola junto. Antes só a
+      // lista de capítulos rolava, e os painéis acima dela tinham altura
+      // própria: com uma dúzia de achados da conferência, eles comiam a janela
+      // inteira e os capítulos (e o botão de confirmar) sumiam sem barra
+      // nenhuma para alcançá-los.
       column(class = "secao cresce", if = @rev_tem_esboco, equals = true) {
-        // ── a obra ────────────────────────────────────────────────────
-        column(class = painel) {
-          text("A OBRA", class = rotulo)
-
-          input(
-            class = campo,
-            placeholder = título,
-            :value = rev_titulo,
-            on_change = titulo_obra_mudou,
-          )
-
-          textarea(
-            class = "campo campo-resumo",
-            placeholder = "resumo — o que a pessoa sabe fazer ao terminar",
-            :value = rev_resumo,
-            on_change = resumo_obra_mudou,
-          )
-
-          input(
-            class = campo,
-            placeholder = "público — de quem é este material",
-            :value = rev_publico,
-            on_change = publico_obra_mudou,
-          )
-        }
-
-        // ── exercícios e prova (só para curso) ─────────────────────────
-        // Repetido da tela inicial de propósito: este é o último ponto antes
-        // de pagar, e o único em que o tamanho real da obra já é conhecido.
-        column(class = painel, if = @tipo_e_curso, equals = true) {
-          text("EXERCÍCIOS E PROVA", class = rotulo)
-          text("@resumo_avaliacao", class = nota)
-
-          column(class = bloco) {
-            checkbox(
-              label = "Lista de exercícios ao fim de cada capítulo",
-              :checked = quer_exercicios,
-              on_toggle = alternar_exercicios,
-            )
-
-            row(class = linha, if = @quer_exercicios, equals = true) {
-              input(
-                class = campo-num,
-                placeholder = 10,
-                :value = n_exercicios,
-                on_change = n_exercicios_mudou,
-              )
-
-              text("exercícios por capítulo (até 40)", class = "ajuda largo")
-            }
-
-            checkbox(
-              label = "Prova final da obra",
-              :checked = quer_prova,
-              on_toggle = alternar_prova,
-            )
-
-            row(class = linha, if = @quer_prova, equals = true) {
-              input(
-                class = campo-num,
-                placeholder = 40,
-                :value = n_questoes,
-                on_change = n_questoes_mudou,
-              )
-
-              text("questões na prova (até 120)", class = "ajuda largo")
-            }
-          }
-
-          text(
-            "@aviso_avaliacao",
-            class = nota,
-            if = @tem_aviso_avaliacao,
-            equals = true,
-          )
-
-          alert(
-            "@alerta_avaliacao",
-            variant = warning,
-            if = @tem_alerta_avaliacao,
-            equals = true,
-          )
-        }
-
-        // ── o que a conferência de repetições corrigiu ────────────────
-        // A conferência roda sozinha junto com o esboço: o mesmo assunto
-        // planejado em dois capítulos é um defeito do plano, não uma opinião —
-        // e um defeito que ninguém clicou para procurar continua lá. O que
-        // sobra para a tela é discordar, linha a linha.
-        column(class = painel, if = @aud_tem_achados, equals = true) {
-          text("@aud_rotulo", class = rotulo)
-
-          text(
-            """
-              O foco de cada trecho abaixo foi reescrito para usar o assunto em
-              vez de reensiná-lo. Discordou? Desfaça — ou edite o foco à mão no
-              capítulo.
-            """,
-            class = ajuda,
-          )
-
-          column(class = lista) {
-            row(class = "faixa linha", :for_each = aud_ui, var = a) {
-              column(class = dupla) {
-                text("@a.assunto", class = corpo)
-                text("@a.onde", class = nota)
-                text("@a.motivo", class = ajuda)
-              }
-
-              button(
-                "@a.rotulo",
-                class = btn-sutil,
-                on_click = desfazer_achado:@a.n,
-                disabled = @ocupado,
-              )
-            }
-          }
-        }
-
-        // ── os capítulos ──────────────────────────────────────────────
         scrollable(class = "largo cresce", direction = vertical) {
-          column(class = bloco) {
-            column(class = painel, :for_each = rev_capitulos_ui, var = c) {
-              row(class = linha) {
-                text("@c.n", class = "contador num")
+          column(class = "secao calha") {
+            // ── a obra ────────────────────────────────────────────────────
+            column(class = painel) {
+              text("A OBRA", class = rotulo)
 
-                column(class = dupla) {
-                  text("@c.titulo", class = corpo)
-                  text("@c.resumo", class = nota)
-                  text("@c.n_subs subcapítulos", class = nota)
+              input(
+                class = campo,
+                placeholder = título,
+                :value = rev_titulo,
+                on_change = titulo_obra_mudou,
+              )
+
+              textarea(
+                class = "campo campo-resumo",
+                placeholder = "resumo — o que a pessoa sabe fazer ao terminar",
+                :value = rev_resumo,
+                on_change = resumo_obra_mudou,
+              )
+
+              input(
+                class = campo,
+                placeholder = "público — de quem é este material",
+                :value = rev_publico,
+                on_change = publico_obra_mudou,
+              )
+            }
+
+            // ── exercícios e prova (só para curso) ─────────────────────────
+            // Repetido da tela inicial de propósito: este é o último ponto antes
+            // de pagar, e o único em que o tamanho real da obra já é conhecido.
+            column(class = painel, if = @tipo_e_curso, equals = true) {
+              text("EXERCÍCIOS E PROVA", class = rotulo)
+              text("@resumo_avaliacao", class = nota)
+
+              column(class = bloco) {
+                checkbox(
+                  label = "Lista de exercícios ao fim de cada capítulo",
+                  :checked = quer_exercicios,
+                  on_toggle = alternar_exercicios,
+                )
+
+                row(class = linha, if = @quer_exercicios, equals = true) {
+                  input(
+                    class = campo-num,
+                    placeholder = 10,
+                    :value = n_exercicios,
+                    on_change = n_exercicios_mudou,
+                  )
+
+                  text("exercícios por capítulo (até 40)", class = "ajuda largo")
                 }
 
-                button("▲", class = btn-sutil, on_click = mover_cima:@c.n)
-
-                button("▼", class = btn-sutil, on_click = mover_baixo:@c.n)
-
-                button(
-                  editar,
-                  class = btn-sutil,
-                  on_click = selecionar_capitulo:@c.n,
+                checkbox(
+                  label = "Prova final da obra",
+                  :checked = quer_prova,
+                  on_toggle = alternar_prova,
                 )
 
-                button(
-                  excluir,
-                  class = btn-sutil,
-                  on_click = excluir_capitulo:@c.n,
-                )
+                row(class = linha, if = @quer_prova, equals = true) {
+                  input(
+                    class = campo-num,
+                    placeholder = 40,
+                    :value = n_questoes,
+                    on_change = n_questoes_mudou,
+                  )
+
+                  text("questões na prova (até 120)", class = "ajuda largo")
+                }
               }
 
-              // painel de edição — só para o capítulo selecionado
-              column(class = bloco, if = @c.selecionado, equals = true) {
-                input(
-                  class = campo,
-                  placeholder = "título do capítulo",
-                  :value = rev_cap_titulo,
-                  on_change = titulo_cap_mudou,
-                )
+              text(
+                "@aviso_avaliacao",
+                class = nota,
+                if = @tem_aviso_avaliacao,
+                equals = true,
+              )
 
-                textarea(
-                  class = "campo campo-resumo",
-                  placeholder = "resumo — o papel dele na obra",
-                  :value = rev_cap_resumo,
-                  on_change = resumo_cap_mudou,
-                )
+              alert(
+                "@alerta_avaliacao",
+                variant = warning,
+                if = @tem_alerta_avaliacao,
+                equals = true,
+              )
+            }
 
-                text("SUBCAPÍTULOS", class = rotulo)
+            // ── o que a conferência de repetições corrigiu ────────────────
+            // A conferência roda sozinha junto com o esboço: o mesmo assunto
+            // planejado em dois capítulos é um defeito do plano, não uma opinião —
+            // e um defeito que ninguém clicou para procurar continua lá. O que
+            // sobra para a tela é discordar, linha a linha.
+            column(class = painel, if = @aud_tem_achados, equals = true) {
+              text("@aud_rotulo", class = rotulo)
 
-                column(class = lista) {
-                  row(class = linha, :for_each = rev_subs_ui, var = s) {
-                    input(
-                      class = campo,
-                      placeholder = "título do subcapítulo",
-                      :value = sub_titulo_@s.n,
-                      on_change = titulo_sub_mudou:@s.n,
+              text(
+                """
+                  O foco de cada trecho abaixo foi reescrito para usar o assunto em
+                  vez de reensiná-lo. Discordou? Desfaça — ou edite o foco à mão no
+                  capítulo.
+                """,
+                class = ajuda,
+              )
+
+              column(class = lista) {
+                row(class = "faixa linha", :for_each = aud_ui, var = a) {
+                  column(class = dupla) {
+                    text("@a.assunto", class = corpo)
+                    text("@a.onde", class = nota)
+                    text("@a.motivo", class = ajuda)
+                  }
+
+                  button(
+                    "@a.rotulo",
+                    class = btn-sutil,
+                    on_click = desfazer_achado:@a.n,
+                    disabled = @ocupado,
+                  )
+                }
+              }
+            }
+
+            // ── os capítulos ──────────────────────────────────────────────
+            column(class = bloco) {
+              column(class = painel, :for_each = rev_capitulos_ui, var = c) {
+                row(class = linha) {
+                  text("@c.n", class = "contador num")
+
+                  column(class = dupla) {
+                    text("@c.titulo", class = corpo)
+                    text("@c.resumo", class = nota)
+                    text("@c.n_subs subcapítulos", class = nota)
+                  }
+
+                  // Rótulo escrito, como "editar" e "excluir": um botão só de
+                  // seta (glifo ou quadrado) não diz o que faz, e o glacier não
+                  // centra na vertical um rótulo em botão de altura fixa sem
+                  // padding — a seta ficava no canto. Nas pontas da lista o
+                  // botão fica apagado em vez de aceitar um clique que não faz
+                  // nada.
+                  button(
+                    "↑ subir",
+                    class = btn-sutil,
+                    on_click = mover_cima:@c.n,
+                    disabled = @c.primeiro,
+                  )
+
+                  button(
+                    "↓ descer",
+                    class = btn-sutil,
+                    on_click = mover_baixo:@c.n,
+                    disabled = @c.ultimo,
+                  )
+
+                  button(
+                    "editar",
+                    class = btn-sutil,
+                    on_click = selecionar_capitulo:@c.n,
+                  )
+
+                  button(
+                    "excluir",
+                    class = btn-perigo,
+                    on_click = excluir_capitulo:@c.n,
+                  )
+                }
+
+                // painel de edição — só para o capítulo selecionado
+                column(class = bloco, if = @c.selecionado, equals = true) {
+                  input(
+                    class = campo,
+                    placeholder = "título do capítulo",
+                    :value = rev_cap_titulo,
+                    on_change = titulo_cap_mudou,
+                  )
+
+                  textarea(
+                    class = "campo campo-resumo",
+                    placeholder = "resumo — o papel dele na obra",
+                    :value = rev_cap_resumo,
+                    on_change = resumo_cap_mudou,
+                  )
+
+                  text("SUBCAPÍTULOS", class = rotulo)
+
+                  column(class = lista) {
+                    row(class = linha, :for_each = rev_subs_ui, var = s) {
+                      input(
+                        class = campo,
+                        placeholder = "título do subcapítulo",
+                        :value = sub_titulo_@s.n,
+                        on_change = titulo_sub_mudou:@s.n,
+                      )
+
+                      input(
+                        class = campo,
+                        placeholder = "foco — o que este trecho deve ensinar",
+                        :value = sub_foco_@s.n,
+                        on_change = foco_sub_mudou:@s.n,
+                      )
+
+                      button(
+                        "remover",
+                        class = btn-perigo,
+                        on_click = excluir_sub:@s.n,
+                      )
+                    }
+                  }
+
+                  row(class = linha) {
+                    button(
+                      "+ adicionar subcapítulo",
+                      class = btn-sutil,
+                      on_click = adicionar_sub,
                     )
 
-                    input(
-                      class = campo,
-                      placeholder = "foco — o que este trecho deve ensinar",
-                      :value = sub_foco_@s.n,
-                      on_change = foco_sub_mudou:@s.n,
-                    )
+                    text("", class = largo)
 
                     button(
-                      remover,
+                      "fechar edição",
                       class = btn-sutil,
-                      on_click = excluir_sub:@s.n,
+                      on_click = fechar_edicao,
                     )
                   }
                 }
-
-                row(class = linha) {
-                  button(
-                    "+ adicionar subcapítulo",
-                    class = btn-sutil,
-                    on_click = adicionar_sub,
-                  )
-
-                  text("", class = largo)
-
-                  button(
-                    "fechar edição",
-                    class = btn-sutil,
-                    on_click = fechar_edicao,
-                  )
-                }
               }
-            }
 
-            button(
-              "+ adicionar capítulo",
-              class = "btn largo",
-              on_click = adicionar_capitulo,
-            )
+              button(
+                "+ adicionar capítulo",
+                class = "btn largo",
+                on_click = adicionar_capitulo,
+              )
+            }
           }
         }
 

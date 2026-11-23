@@ -163,7 +163,7 @@ screen {
             }
 
             button(
-              Generate,
+              "Gerar",
               class = btn-gerar,
               on_click = gerar,
               disabled = @ocupado,

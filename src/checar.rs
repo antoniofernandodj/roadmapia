@@ -35,6 +35,7 @@ pub fn checar() -> std::process::ExitCode {
         }
     }
 
+    falhas += checar_rotulos_entre_aspas();
     falhas += checar_binding_de_visibilidade(&mut motor);
     falhas += checar_alinhamento_dos_botoes(&mut motor);
     falhas += checar_config_ini();
@@ -52,6 +53,69 @@ pub fn checar() -> std::process::ExitCode {
     } else {
         std::process::ExitCode::from(falhas)
     }
+}
+
+/// O rótulo de `button`/`text`/`alert` é o primeiro argumento posicional, e o
+/// glacier 0.168 só o aceita como string: `button(editar, …)` carrega sem erro
+/// nenhum e desenha um botão VAZIO. Seis botões do app ficaram assim na
+/// migração (editar, excluir, remover, Generate, início, Parar) e nenhum outro
+/// teste viu, porque metade deles só existe dentro de `:for_each`/`if` com
+/// estado montado. Por isso a regra lê a fonte, não a árvore renderizada:
+/// cobre todo botão, em qualquer estado.
+fn checar_rotulos_entre_aspas() -> u8 {
+    let mut problemas = Vec::new();
+    for (_, arquivo) in telas() {
+        match std::fs::read_to_string(ui(arquivo)) {
+            Ok(fonte) => problemas.extend(rotulos_sem_aspas(&fonte, arquivo)),
+            Err(e) => problemas.push(format!("{arquivo}: {e}")),
+        }
+    }
+    if problemas.is_empty() {
+        println!("✓ rótulos de botão/texto entre aspas");
+        0
+    } else {
+        for p in &problemas {
+            eprintln!("✗ rótulo sem aspas (o glacier desenha vazio) — {p}");
+        }
+        1
+    }
+}
+
+/// `arquivo:linha: tag(palavra` para cada `button(`/`text(`/`alert(` cujo
+/// primeiro argumento não abre com `"`. Uma tag sem posicional (`alert(variant
+/// = …)`) é legítima: o que vem antes do `=` é nome de atributo.
+fn rotulos_sem_aspas(fonte: &str, arquivo: &str) -> Vec<String> {
+    let mut achados = Vec::new();
+    let b = fonte.as_bytes();
+    for tag in ["button(", "text(", "alert("] {
+        let mut de = 0;
+        while let Some(i) = fonte[de..].find(tag).map(|i| i + de) {
+            de = i + tag.len();
+            // `textarea(`/`subtext(` não contam: a tag tem de começar ali.
+            if i > 0 && (b[i - 1].is_ascii_alphanumeric() || b[i - 1] == b'_') {
+                continue;
+            }
+            // Comentário de linha: ignora.
+            let inicio_linha = fonte[..i].rfind('\n').map_or(0, |n| n + 1);
+            if fonte[inicio_linha..i].contains("//") {
+                continue;
+            }
+            let resto = fonte[de..].trim_start();
+            if resto.starts_with('"') || resto.starts_with(')') {
+                continue;
+            }
+            let palavra: String = resto
+                .chars()
+                .take_while(|c| !matches!(c, ',' | ')' | '\n'))
+                .collect();
+            if palavra.contains('=') {
+                continue;
+            }
+            let linha = fonte[..i].matches('\n').count() + 1;
+            achados.push(format!("{arquivo}:{linha}: {tag}{}", palavra.trim()));
+        }
+    }
+    achados
 }
 
 /// Os botões do fim da fila: `próxima` e `concluir` se revezam, e `concluir`

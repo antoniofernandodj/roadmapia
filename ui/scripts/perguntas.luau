@@ -169,7 +169,7 @@ end
 
 -- ── gerar: fase 1, o esboço ─────────────────────────────────────────────────
 
---- O "Generate" NÃO escreve a obra — ele a PLANEJA. Uma chamada só devolve, no
+--- O "Gerar" NÃO escreve a obra — ele a PLANEJA. Uma chamada só devolve, no
 --- máximo, alguns milhares de tokens; nesse espaço só cabe um índice (foi o que
 --- a primeira versão deste app produzia: uma grade de estudos sem uma linha de
 --- código dentro). Então aqui sai só a arquitetura — capítulos e trechos, com o
