@@ -319,7 +319,9 @@ function M.rodar()
 
     local n_md = 0
     for _ in pairs(arquivos) do n_md = n_md + 1 end
-    conferir(n_md == 2 * 2 + 2 + 1, "um arquivo por trecho + um por capítulo + o sumário",
+    -- + o arquivo de projeto, que vai junto com a obra para ela ser retomada.
+    conferir(n_md == 2 * 2 + 2 + 1 + 1,
+        "um arquivo por trecho + um por capítulo + o sumário + o projeto",
         tostring(n_md))
 
     -- ── 7. gravar o plano projeta a tela ────────────────────────────────────────
@@ -591,12 +593,13 @@ function M.rodar()
     conferir(prova_readme ~= nil and prova_readme:find("Parte 1", 1, true) ~= nil,
         "…listando as partes")
 
-    -- 4 trechos + 2 aberturas + 2 lotes + 1 parte + sumário + índice da prova.
+    -- 4 trechos + 2 aberturas + 2 lotes + 1 parte + sumário + índice da prova
+    -- + o arquivo de projeto.
     local n_av = 0
     for _ in pairs(arquivos) do
         n_av += 1
     end
-    conferir(n_av == 11, "um arquivo por tarefa, mais os dois índices", tostring(n_av))
+    conferir(n_av == 12, "um arquivo por tarefa, mais os dois índices e o projeto", tostring(n_av))
 
     -- ── 8e. planos de antes desta versão ────────────────────────────────────────
     --
@@ -951,6 +954,138 @@ function M.rodar()
     conferir(pl_dir.capitulos[1].subs[1].arquivo:sub(1, 27) == "/home/x/Documents/roadmapia",
         "…e os arquivos dos trechos também")
     ctx.dir_saidas = nil
+
+    -- ── 14. retomar pela pasta ───────────────────────────────────────────────
+    -- Uma produção que parou (créditos, rede, app fechado) é retomada pela
+    -- pasta da obra: do `projeto.roadmapia`, ou reconstruída do README de uma
+    -- obra anterior a ele. Quem diz o que está pronto é o disco.
+    local Ret = require("lib/retomada")
+    local read_file_real = read_file
+    read_file = function(caminho)
+        return arquivos[caminho]
+    end
+
+    conferir(Ret.sintese_de("## Título\n\nPrimeiro parágrafo.\n\n## A\n\nx\n\n### B\n")
+        == "Primeiro parágrafo. Seções: A; B.",
+        "a síntese reconstruída é o 1º parágrafo e as seções, sem o título")
+    conferir(Ret.abertura_de("# Cap\n\nTexto da abertura.\n\n---\n\n## Neste capítulo\n")
+        == "Texto da abertura.", "a abertura sai do README do capítulo")
+
+    arquivos = {}
+    limpar_ctx()
+    local TEXTO = "## T\n\nParágrafo de abertura do trecho.\n\n## Seção A\n\ntexto"
+    local function produzir_tudo(): number
+        local n = 0
+        while true do
+            local t = O.tomar_tarefa()
+            if t == nil then
+                break
+            end
+            O.concluir(t, TEXTO)
+            n += 1
+        end
+        return n
+    end
+    local p14 = assert(O.montar(esboco(2, 3), "retomar", nil,
+        { exercicios_por_capitulo = 4, questoes_prova = 10 }))
+    p14.tipo = "curso"
+    p14.assunto = "Rust"
+    O.gravar_plano(p14)
+    produzir_tudo()
+    O.gravar_sumario()
+    local pasta14 = "saidas/retomar"
+    conferir(arquivos[pasta14 .. "/projeto.roadmapia"] ~= nil, "a obra grava o arquivo de projeto")
+
+    -- Três partes perdidas de três jeitos: uma falhou, uma ficou "fazendo"
+    -- quando o app fechou, e uma está "pronta" no projeto mas sumiu do disco.
+    local pl14 = assert(O.plano())
+    local a12 = pl14.capitulos[1].subs[2].arquivo
+    local a21 = pl14.capitulos[2].subs[1].arquivo
+    local prova1 = pl14.prova[1].arquivo
+    pl14.capitulos[1].subs[2].status = O.ERRO
+    pl14.capitulos[2].subs[1].status = O.FAZENDO
+    O.gravar_plano(pl14)
+    arquivos[a12], arquivos[a21], arquivos[prova1] = nil, nil, nil
+    limpar_ctx() -- o app fechou: nada em memória, só o disco
+
+    local r14, origem14, _, faltam14 = Ret.carregar(pasta14 .. "/")
+    conferir(r14 ~= nil and origem14 == "projeto", "retoma do arquivo de projeto", origem14)
+    conferir(faltam14 == 3, "faltam exatamente as três partes perdidas", tostring(faltam14))
+    conferir(r14.capitulos[1].subs[2].status == O.PENDENTE
+        and r14.capitulos[2].subs[1].status == O.PENDENTE
+        and r14.prova[1].status == O.PENDENTE,
+        "falha, 'fazendo' e arquivo sumido voltam todos para a fila")
+    conferir(r14.capitulos[1].subs[1].status == O.PRONTO, "o que existe continua pronto")
+    conferir(r14.tipo == "curso" and r14.assunto == "Rust", "tipo e assunto vêm do projeto")
+
+    O.gravar_plano(r14)
+    O.atualizar_indice_capitulo(r14, 1)
+    conferir(arquivos[r14.capitulos[1].arquivo]:find("(não gerado)", 1, true) ~= nil,
+        "o README do capítulo marca o trecho que falta")
+    conferir(produzir_tudo() == 3, "a fila retomada entrega só o que faltou")
+    conferir(arquivos[a12] ~= nil and arquivos[a21] ~= nil and arquivos[prova1] ~= nil,
+        "…e as três partes são gravadas")
+    conferir(arquivos[r14.capitulos[1].arquivo]:find("(não gerado)", 1, true) == nil,
+        "o README do capítulo acompanha o trecho que saiu depois da abertura")
+    O.gravar_sumario()
+
+    -- A pasta mudou de lugar: os caminhos seguem a pasta, não o projeto.
+    local movidos = {}
+    for k, v in pairs(arquivos) do
+        if k:sub(1, #pasta14) == pasta14 then
+            movidos["/outro/retomar" .. k:sub(#pasta14 + 1)] = v
+        end
+    end
+    arquivos = movidos
+    limpar_ctx()
+    local m14, _, _, faltam_m = Ret.carregar("/outro/retomar")
+    conferir(m14 ~= nil and m14.pasta == "/outro/retomar"
+        and m14.capitulos[2].subs[3].arquivo:sub(1, 15) == "/outro/retomar/",
+        "uma pasta movida é retomada no lugar novo")
+    conferir(faltam_m == 0, "…e nada falta", tostring(faltam_m))
+
+    -- Obra sem projeto (anterior a ele): reconstruída do README.
+    arquivos["/outro/retomar/projeto.roadmapia"] = nil
+    local sub_some = m14.capitulos[2].subs[2].arquivo
+    local lote_some = m14.capitulos[1].exercicios[1].arquivo
+    arquivos[sub_some], arquivos[lote_some] = nil, nil
+    local rc, origem_rc, _, faltam_rc = Ret.carregar("/outro/retomar")
+    conferir(rc ~= nil and origem_rc == "reconstruído", "sem projeto, reconstrói do README", origem_rc)
+    conferir(faltam_rc == 2, "a reconstrução acha o que falta", tostring(faltam_rc))
+    if rc ~= nil then
+        local mesmos = #rc.capitulos == #m14.capitulos
+        for ci, cap in ipairs(rc.capitulos) do
+            mesmos = mesmos and cap.arquivo == m14.capitulos[ci].arquivo
+                and #cap.subs == #m14.capitulos[ci].subs
+            for si, sub in ipairs(cap.subs) do
+                mesmos = mesmos and sub.arquivo == m14.capitulos[ci].subs[si].arquivo
+            end
+            local la, lb = O.lotes_de(cap), O.lotes_de(m14.capitulos[ci])
+            mesmos = mesmos and #la == #lb
+            for li, l in ipairs(la) do
+                mesmos = mesmos and l.arquivo == lb[li].arquivo and l.de == lb[li].de
+                    and l.ate == lb[li].ate and l.n == lb[li].n
+            end
+        end
+        conferir(mesmos, "a reconstrução chega aos mesmos capítulos, trechos, lotes e caminhos")
+        conferir(#O.prova_de(rc) == #O.prova_de(m14) and rc.prova[1].n == m14.prova[1].n,
+            "…e à mesma prova")
+        conferir(rc.tipo == "curso", "uma obra com exercícios é um curso")
+        conferir(rc.capitulos[1].subs[1].sintese:find("Seção A", 1, true) ~= nil,
+            "o trecho pronto ganha síntese do próprio texto, para os exercícios e a prova")
+        conferir(rc.capitulos[1].sintese ~= "", "a abertura volta como síntese do capítulo")
+    end
+
+    -- O sumário de uma obra real (o curso em `saidas/`, commitado com o repo).
+    local real = read_file_real("saidas/curso-contabilidade-tributaria/README.md")
+    if real ~= nil then
+        local sr = Ret.ler_sumario(real)
+        conferir(sr ~= nil and #sr.capitulos == 12 and #sr.capitulos[1].subs == 20
+            and #sr.capitulos[1].lotes == 2 and sr.capitulos[1].lotes[2].de == 11
+            and sr.questoes == 40,
+            "o sumário de uma obra real: 12 capítulos × 20 trechos, 2 lotes, 40 questões")
+    end
+    read_file = read_file_real
 
     write_file = write_file_real
     limpar_ctx()

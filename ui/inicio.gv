@@ -27,6 +27,16 @@ screen {
               class = btn-sutil,
               on_click = continuar_rascunho,
             )
+
+            // Uma obra que parou no meio (créditos, rede, app fechado): escolhe
+            // a pasta dela e gera só o que faltou.
+            button(
+              "Retomar obra…",
+              class = btn-sutil,
+              on_click = retomar_obra,
+              tooltip = "escolher a pasta de uma obra e gerar só o que faltou",
+              tooltip_position = bottom,
+            )
           }
 
           // ── 1. o assunto ─────────────────────────────────────────────────

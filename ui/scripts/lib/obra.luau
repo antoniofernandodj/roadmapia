@@ -30,6 +30,7 @@
 
 local A = require("lib/avaliacao")
 local Cam = require("lib/caminhos")
+local L = require("lib/log")
 
 local O = {}
 
@@ -88,6 +89,14 @@ export type Capitulo = {
 }
 
 export type Plano = {
+    -- A versão do formato do arquivo de projeto (ver `O.ARQUIVO_PROJETO`).
+    -- `nil` num plano anterior a ele.
+    formato: number?,
+    -- "curso"/"roadmap"/"guia" e o pedido original. Moram no plano para a obra
+    -- poder ser retomada de um arquivo, com o app recém-aberto: o contexto
+    -- não tem mais nada da sessão que a começou. `nil` em planos antigos.
+    tipo: string?,
+    assunto: string?,
     titulo: string,
     resumo: string,
     publico: string,
@@ -211,7 +220,41 @@ end
 --- para produzir. Amarrando aqui, esquecer deixa de ser possível.
 function O.gravar_plano(plano: Plano)
     ctx.obra_json = json.encode(plano)
+    O.gravar_projeto(plano)
     O.projetar(nil, plano)
+end
+
+-- ── o arquivo de projeto ────────────────────────────────────────────────────
+
+--- O arquivo de projeto da obra: o plano inteiro, com o estado de cada parte,
+--- dentro da pasta dela. É o que deixa retomar uma produção que falhou ou foi
+--- interrompida, mesmo depois de fechar o app — antes o plano só existia em
+--- `ctx.obra_json`, e fechar o app no meio deixava uma pasta pela metade sem
+--- jeito de saber o que faltava (ver `lib/retomada`).
+---
+--- Extensão própria, e não `.json`: é um arquivo da obra, que acompanha a
+--- pasta (e o git dela), não um dado interno que o `.gitignore` esconde.
+O.ARQUIVO_PROJETO = "projeto.roadmapia"
+O.FORMATO_PROJETO = 1
+
+function O.caminho_projeto(pasta: string): string
+    return pasta .. "/" .. O.ARQUIVO_PROJETO
+end
+
+--- Espelha o plano no arquivo de projeto. Roda a cada `gravar_plano`, isto é,
+--- a cada parte que começa, termina ou falha: o arquivo nunca está mais de
+--- um passo atrás do que a tela mostra. O texto é o mesmo `obra_json` que
+--- acabou de ser codificado, então gravá-lo não custa outro encode.
+function O.gravar_projeto(plano: Plano)
+    if write_file == nil or (plano.pasta or "") == "" then
+        return
+    end
+    local ok, err = write_file(O.caminho_projeto(plano.pasta), ctx.obra_json)
+    if not ok then
+        -- Não derruba a produção: o arquivo é o seguro dela, não ela. Mas fica
+        -- registrado, porque sem ele não há retomada.
+        L.aviso("obra", "não deu para gravar o arquivo de projeto: " .. tostring(err))
+    end
 end
 
 -- ── montagem a partir do esboço da IA ───────────────────────────────────────
@@ -232,6 +275,7 @@ function O.montar(
 
     local pasta = Cam.em(slug_base)
     local plano = {
+        formato = O.FORMATO_PROJETO,
         titulo = tostring(esboco.titulo or slug_base),
         resumo = tostring(esboco.resumo or ""),
         publico = tostring(esboco.publico or ""),
@@ -653,8 +697,25 @@ function O.concluir(tarefa: Tarefa, texto: string): (boolean, string?)
         alvo.status = O.ERRO
         alvo.erro = tostring(err)
     end
+    -- O README do capítulo lista o que já saiu, e só era escrito uma vez, junto
+    -- com a abertura: um trecho ou lote de exercícios que terminasse depois
+    -- continuava marcado "(não gerado)" para sempre. Reescrito aqui, a partir
+    -- da abertura guardada, ele acompanha o capítulo.
+    if ok and tarefa.tipo ~= "abertura" and tarefa.cap ~= nil then
+        O.atualizar_indice_capitulo(plano, tarefa.cap)
+    end
     O.gravar_plano(plano)
     return ok, err
+end
+
+--- Reescreve o README de um capítulo cuja abertura já saiu. Sem abertura não
+--- há o que reescrever: o README nasce com ela.
+function O.atualizar_indice_capitulo(plano: Plano, ci: number)
+    local cap = plano.capitulos[ci]
+    if cap == nil or cap.status ~= O.PRONTO or (cap.sintese or "") == "" then
+        return
+    end
+    write_file(cap.arquivo, O.cabecalho_capitulo(plano, cap, cap.sintese))
 end
 
 --- Marca a tarefa como falha (erro de rede/modelo). Ela volta a ser

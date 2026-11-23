@@ -12,6 +12,8 @@ local A = require("lib/avaliacao")
 local O = require("lib/obra")
 local Rascunho = require("lib/rascunho")
 local L = require("lib/log")
+local Ret = require("lib/retomada")
+local Cam = require("lib/caminhos")
 
 -- Quantas perguntas a primeira rodada pede. Poucas o bastante para ninguém
 -- desistir no meio, muitas o bastante para o material sair diferente do
@@ -237,6 +239,56 @@ function continuar_rascunho(): ()
     E.erro(nil)
     R.projetar()
     navigate("revisao")
+end
+
+--- Retoma uma obra pela pasta dela e leva direto para a produção, com só o
+--- que faltou na fila (ver `lib/retomada`). Serve para uma produção que
+--- falhou (créditos, rede) ou foi interrompida, mesmo com o app fechado desde
+--- então: o estado vem do `projeto.roadmapia` da pasta, ou é reconstruído do
+--- README de uma obra anterior a ele.
+function retomar_obra(): ()
+    -- Trocar o plano debaixo de um pool rodando faria os workers gravarem o
+    -- resultado da obra antiga no estado da nova.
+    if ctx.produzindo == "true" then
+        E.erro("Há uma produção em andamento. Pare-a antes de retomar outra obra.")
+        return
+    end
+    local pasta = pick_folder({
+        title = "Escolha a pasta da obra para retomar",
+        starting_dir = Cam.saidas(),
+    })
+    if pasta == nil or pasta == "" then
+        return
+    end
+
+    local plano, origem, prontos, faltam = Ret.carregar(pasta)
+    if plano == nil then
+        E.erro("Não deu para retomar: " .. origem)
+        L.aviso("inicio", "retomar " .. tostring(pasta) .. ": " .. origem)
+        return
+    end
+
+    E.erro(nil)
+    aplicar_tipo(plano.tipo or "curso")
+    ctx.assunto = plano.assunto or plano.titulo
+    O.gravar_plano(plano)
+    O.gravar_sumario()
+    for ci in ipairs(plano.capitulos) do
+        O.atualizar_indice_capitulo(plano, ci)
+    end
+    O.projetar(E.rotulo(ctx.tipo))
+    L.info("inicio", "obra retomada (" .. origem .. "): " .. plano.pasta
+        .. " prontos=" .. prontos .. " faltam=" .. faltam)
+
+    if faltam == 0 then
+        toast({ message = "Esta obra já está completa.", kind = "info" })
+    else
+        toast({
+            message = "Obra retomada: " .. faltam .. " parte(s) a gerar. Clique em produzir.",
+            kind = "success",
+        })
+    end
+    navigate("producao")
 end
 
 -- ── apoio ───────────────────────────────────────────────────────────────────

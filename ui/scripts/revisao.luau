@@ -303,6 +303,8 @@ function confirmar(): ()
     end
 
     E.erro(nil)
+    plano.tipo = ctx.tipo
+    plano.assunto = ctx.assunto
     O.gravar_plano(plano)
     O.gravar_sumario()
     -- O esboço virou um `Plano` de verdade em disco; o rascunho não serve

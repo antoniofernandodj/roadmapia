@@ -45,6 +45,9 @@ pub fn checar() -> std::process::ExitCode {
     falhas += simular_entrevista(&mut motor);
     falhas += simular_revisao(&mut motor);
     falhas += simular_producao(&mut motor);
+    // A simulação da produção grava o plano, e todo plano gravado agora
+    // espelha o `projeto.roadmapia` na pasta da obra (`saidas/teste`).
+    let _ = std::fs::remove_dir_all("saidas/teste");
     falhas += simular_demo();
     falhas += simular_log(&mut motor);
 

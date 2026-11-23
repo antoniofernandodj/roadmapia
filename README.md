@@ -280,6 +280,7 @@ Para gravar em outro lugar, `ROADMAPIA_SAIDAS=/outro/caminho roadmapia`. Só o
 ```
 ~/Documents/roadmapia/<tipo>-<assunto>/
 ├── README.md                   capa + sumário com links (reescrito a cada trecho)
+├── projeto.roadmapia           o plano e o estado de cada parte (para retomar)
 ├── 01-<capitulo>/
 │   ├── README.md               abertura do capítulo + índice
 │   ├── 01-<trecho>.md
@@ -294,6 +295,26 @@ Para gravar em outro lugar, `ROADMAPIA_SAIDAS=/outro/caminho roadmapia`. Só o
 Os arquivos aparecem conforme ficam prontos, então dá para começar a ler antes
 do fim. Se algo falhar, "Refazer falhas" devolve só o que falhou à fila —
 inclusive o que ficou preso se o app foi fechado no meio.
+
+### Retomar uma obra
+
+Se a produção parar no meio — créditos que acabam, rede que cai, app fechado —,
+**Retomar obra…** na tela inicial pede a pasta da obra e leva direto para a
+produção com só o que faltou na fila.
+
+- Toda obra grava `projeto.roadmapia` na própria pasta, a cada parte que
+  começa, termina ou falha: o plano inteiro (capítulos, focos, observações,
+  números de exercícios e questões, o registro de conceitos) e o estado de
+  cada parte. Retomar é lê-lo de volta. A pasta pode ter mudado de lugar.
+- Uma obra anterior ao `projeto.roadmapia` é **reconstruída** do `README.md`
+  dela, que lista capítulos, trechos, lotes de exercícios e a prova. Perde-se
+  o que não ia para disco — focos, observações e o registro de conceitos —,
+  e a síntese de cada trecho passa a ser o primeiro parágrafo e as seções
+  dele.
+- Nos dois casos, quem diz o que está pronto é o **disco**: um arquivo que
+  existe está pronto, um que não existe volta para a fila. Então uma parte que
+  falhou, uma que ficou pela metade quando o app fechou e um arquivo apagado à
+  mão para ser refeito caem todos no mesmo lugar.
 
 ## Log
 
