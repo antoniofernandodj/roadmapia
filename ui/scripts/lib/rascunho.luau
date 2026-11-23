@@ -12,13 +12,18 @@
 --
 -- Vale por UMA obra de cada vez: gravar substitui o rascunho anterior, e
 -- `limpar()` roda tanto ao confirmar o plano (virou um `Plano` de verdade em
--- `saidas/`, o rascunho não serve mais) quanto ao começar uma entrevista nova
+-- disco, o rascunho não serve mais) quanto ao começar uma entrevista nova
 -- (ver `inicio.luau:refinar()` — o esboço antigo não serve para o assunto
 -- novo, mesma lógica que já zerava `ctx.esboco_json` em memória).
 
 local RASCUNHO = {}
 
-RASCUNHO.ARQUIVO = "saidas/.rascunho-esboco.json"
+local C = require("./caminhos")
+
+--- O arquivo do rascunho, dentro da pasta de saída.
+function RASCUNHO.arquivo(): string
+    return C.em(".rascunho-esboco.json")
+end
 
 --- Grava (substitui) o rascunho. Síncrono — `write_file` não suspende a
 --- corrotina, então dá para chamar de qualquer handler sem virar `async`.
@@ -42,7 +47,7 @@ function RASCUNHO.salvar(
         -- confirmar o plano produziria uma obra que esqueceu metade do pedido.
         detalhes = detalhes or "",
     })
-    write_file(RASCUNHO.ARQUIVO, envelope)
+    write_file(RASCUNHO.arquivo(), envelope)
 end
 
 --- Lê o rascunho do disco, se houver — `nil` se não há arquivo, se está
@@ -50,7 +55,7 @@ end
 --- `read_file` não suspende a corrotina, então dá para chamar de qualquer
 --- handler.
 function RASCUNHO.carregar(): any?
-    local corpo = read_file(RASCUNHO.ARQUIVO)
+    local corpo = read_file(RASCUNHO.arquivo())
     if corpo == nil or corpo == "" then
         return nil
     end
@@ -67,7 +72,7 @@ end
 --- decodifica como esboço válido, então `carregar()` já trata isso como
 --- "nada salvo".
 function RASCUNHO.limpar()
-    write_file(RASCUNHO.ARQUIVO, "")
+    write_file(RASCUNHO.arquivo(), "")
 end
 
 return RASCUNHO

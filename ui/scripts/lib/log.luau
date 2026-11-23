@@ -6,15 +6,21 @@
 -- morreu num erro de script. Sem rastro, o sintoma é "gerou a pasta mas não
 -- gerou os arquivos" — e não há como saber onde parou.
 --
--- Vai para `saidas/roadmapia.log`, em append (`append_file` do glacier), então
+-- Vai para `roadmapia.log` na pasta de saída (ver `lib/caminhos`), em append (`append_file` do glacier), então
 -- sobrevive a fechar o app no meio. Todas as telas escrevem no MESMO arquivo:
 -- o interesse é a linha do tempo de uma sessão, não a de uma tela.
 --
 -- Cada linha: `HH:MM:SS  NÍVEL  origem  mensagem`.
 
+local C = require("./caminhos")
+
 local L = {}
 
-L.ARQUIVO = "saidas/roadmapia.log"
+--- O arquivo do log. Função, não constante: a pasta de saída só é conhecida
+--- depois que o Rust a semeia no `ctx`.
+function L.arquivo(): string
+    return C.em("roadmapia.log")
+end
 
 -- Hora do relógio (o `os` do Luau expõe `date`), com um fallback defensivo:
 -- um log que explode por causa do carimbo não serve para diagnosticar nada.
@@ -35,7 +41,7 @@ function L.escrever(nivel, origem, mensagem)
     -- Sem checar o retorno: um log que aborta a operação que ele deveria
     -- observar seria pior que log nenhum.
     if append_file ~= nil then
-        append_file(L.ARQUIVO, linha)
+        append_file(L.arquivo(), linha)
     end
 end
 

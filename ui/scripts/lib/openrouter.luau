@@ -15,6 +15,7 @@
 -- testes carrega este módulo de fora da árvore de `ui/`, e ali a raiz de
 -- busca é outra — `./log` acha o irmão a partir do arquivo, sempre.
 local L = require("./log")
+local C = require("./caminhos")
 
 local M = {}
 
@@ -33,8 +34,9 @@ M.ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 
 -- Onde a última resposta que não decodificou fica guardada, crua. É o único
 -- jeito de saber DEPOIS o que o modelo devolveu: a chamada já foi paga e não
--- se repete de graça.
-M.ARQUIVO_RESPOSTA_CRUA = "saidas/ultima-resposta-invalida.txt"
+-- se repete de graça. `nil` = `ultima-resposta-invalida.txt` na pasta de
+-- saída; os testes apontam para outro lugar atribuindo aqui.
+M.ARQUIVO_RESPOSTA_CRUA = nil :: string?
 
 -- Uma mensagem só para o corte por tokens: ele chega por três caminhos
 -- (o `finish_reason` padrão, o nativo do provedor, e um JSON que simplesmente
@@ -397,10 +399,11 @@ end
 --- Sempre no MESMO arquivo (não um por falha): o que interessa é a última, e um
 --- diretório enchendo de despejos seria um problema novo. Devolve o caminho.
 function M.guardar_resposta(texto: string): string
+    local caminho = M.ARQUIVO_RESPOSTA_CRUA or C.em("ultima-resposta-invalida.txt")
     if write_file ~= nil then
-        write_file(M.ARQUIVO_RESPOSTA_CRUA, texto)
+        write_file(caminho, texto)
     end
-    return M.ARQUIVO_RESPOSTA_CRUA
+    return caminho
 end
 
 --- Recorta o primeiro objeto/array JSON de um texto que pode vir embrulhado em

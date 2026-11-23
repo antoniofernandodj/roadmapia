@@ -364,6 +364,42 @@ pub fn ui_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ui")
 }
 
+/// Onde o app grava as obras, o log e o rascunho: `~/Documents/roadmapia`.
+///
+/// Antes era `saidas/`, relativo ao diretório de trabalho — certo rodando da
+/// raiz do projeto, errado em todo o resto: aberto pelo menu, o app instalado
+/// tem a home como diretório de trabalho e espalhava `~/saidas`. Uma pasta
+/// fixa, que não depende de onde o app foi aberto, resolve os dois casos.
+///
+/// 1. `$ROADMAPIA_SAIDAS` — override explícito.
+/// 2. A pasta de documentos do sistema (`XDG_DOCUMENTS_DIR` no Linux, que é
+///    `~/Documentos` num sistema em português; a pasta Documentos no Windows) +
+///    `roadmapia`.
+/// 3. `~/Documents/roadmapia`, se o sistema não declarar pasta de documentos.
+pub fn dir_saidas() -> PathBuf {
+    if let Some(d) = std::env::var_os("ROADMAPIA_SAIDAS") {
+        return PathBuf::from(d);
+    }
+    dirs::document_dir()
+        .or_else(|| dirs::home_dir().map(|h| h.join("Documents")))
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("roadmapia")
+}
+
+/// Cria a pasta de saída e a entrega aos scripts como `ctx.dir_saidas`. Os
+/// scripts não leem o ambiente (o Luau do glacier não expõe `getenv`), então
+/// quem sabe onde fica a pasta é o Rust.
+///
+/// Sem esta chave — o `--check` não a define — os scripts caem em `saidas/`
+/// relativo, que é onde os testes gravam e limpam.
+pub fn semear_dir_saidas(motor: &mut GlacierUI) {
+    let dir = dir_saidas();
+    if let Err(e) = std::fs::create_dir_all(&dir) {
+        eprintln!("pasta de saída {}: {e}", dir.display());
+    }
+    motor.define_data("dir_saidas", &dir.to_string_lossy());
+}
+
 /// `ui/<arquivo>` como string — os caminhos que o motor guarda para hot-reload.
 pub fn ui(file: &str) -> String {
     ui_dir().join(file).to_string_lossy().into_owned()

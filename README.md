@@ -272,8 +272,13 @@ para `/usr/local`).
 
 ## A obra em disco
 
+Tudo vai para `~/Documents/roadmapia/` (a pasta de documentos do sistema, que
+num Linux em português é `~/Documentos`), não importa de onde o app foi aberto.
+Para gravar em outro lugar, `ROADMAPIA_SAIDAS=/outro/caminho roadmapia`. Só o
+`--check` grava em `saidas/`, relativo, e limpa o que gravou.
+
 ```
-saidas/<tipo>-<assunto>/
+~/Documents/roadmapia/<tipo>-<assunto>/
 ├── README.md                   capa + sumário com links (reescrito a cada trecho)
 ├── 01-<capitulo>/
 │   ├── README.md               abertura do capítulo + índice
@@ -292,7 +297,7 @@ inclusive o que ficou preso se o app foi fechado no meio.
 
 ## Log
 
-Toda operação vai para `saidas/roadmapia.log`, em append — sobrevive a fechar o
+Toda operação vai para `~/Documents/roadmapia/roadmapia.log`, em append — sobrevive a fechar o
 app no meio de uma produção:
 
 ```

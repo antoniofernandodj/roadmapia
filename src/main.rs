@@ -25,7 +25,7 @@
 mod checar;
 mod config;
 
-use crate::config::{persistir_config, semear_config, telas, ui};
+use crate::config::{persistir_config, semear_config, semear_dir_saidas, telas, ui};
 use checar::checar;
 use glacier_ui::{GlacierDaemon, style};
 
@@ -49,6 +49,7 @@ fn main() -> std::process::ExitCode {
             }
 
             semear_config(motor);
+            semear_dir_saidas(motor);
 
             for (nome, arquivo) in telas() {
                 if let Err(e) = motor.register_component(nome, &ui(arquivo)) {

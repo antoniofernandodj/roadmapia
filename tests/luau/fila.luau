@@ -936,6 +936,22 @@ function M.rodar()
     local sec_det = P.secao(pl_det, pl_det.capitulos[1], pl_det.capitulos[1].subs[1], vizinhos)
     conferir(sec_det:find(DET, 1, true) ~= nil, "…e o trecho os recebe")
 
+    -- ── 13. a pasta de saída ─────────────────────────────────────────────
+    -- O app instalado, aberto pelo menu, roda com a home como diretório de
+    -- trabalho: um `saidas/` relativo virava `~/saidas`. A pasta vem do Rust
+    -- em `ctx.dir_saidas`, absoluta; sem ela (o `--check`), o relativo.
+    local Cam = require("lib/caminhos")
+    ctx.dir_saidas = nil
+    conferir(Cam.saidas() == "saidas", "sem dir_saidas, cai em saidas/ relativo")
+    ctx.dir_saidas = "/home/x/Documents/roadmapia/"
+    conferir(Cam.saidas() == "/home/x/Documents/roadmapia", "a barra do fim não duplica")
+    local pl_dir = assert(O.montar(esboco(1, 1), "curso-dir"))
+    conferir(pl_dir.pasta == "/home/x/Documents/roadmapia/curso-dir",
+        "a obra vai para a pasta semeada, não para o diretório de trabalho")
+    conferir(pl_dir.capitulos[1].subs[1].arquivo:sub(1, 27) == "/home/x/Documents/roadmapia",
+        "…e os arquivos dos trechos também")
+    ctx.dir_saidas = nil
+
     write_file = write_file_real
     limpar_ctx()
 end

@@ -11,7 +11,7 @@
 --
 -- Layout em disco (uma obra = uma pasta):
 --
---   saidas/<slug>/
+--   <pasta de saída>/<slug>/   (`~/Documents/roadmapia`, ver `lib/caminhos`)
 --   ├── README.md          sumário com links para tudo
 --   ├── 01-<capitulo>/
 --   │   ├── README.md      abertura do capítulo
@@ -29,6 +29,7 @@
 -- revisão não renumera nada.
 
 local A = require("lib/avaliacao")
+local Cam = require("lib/caminhos")
 
 local O = {}
 
@@ -229,7 +230,7 @@ function O.montar(
         return nil, "O modelo não devolveu um esboço com capítulos."
     end
 
-    local pasta = "saidas/" .. slug_base
+    local pasta = Cam.em(slug_base)
     local plano = {
         titulo = tostring(esboco.titulo or slug_base),
         resumo = tostring(esboco.resumo or ""),
