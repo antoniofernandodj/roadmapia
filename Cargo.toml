@@ -7,7 +7,7 @@ license = "MIT"
 
 [dependencies]
 dirs = "7.0.0"
-glacier-ui = "0.168.2"
+glacier-ui = "0.168.3"
 
 # O app lê `ui/` em runtime (é o que dá o hot-reload), então o pacote leva a
 # pasta junto — em `/usr/share/roadmapia/ui`, que é onde o `ui_dir()` procura a
