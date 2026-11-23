@@ -22,13 +22,12 @@
 //! para reescrever um prompt ou um passo do fluxo com o app aberto, sem
 //! recompilar.
 
-mod config;
 mod checar;
+mod config;
 
+use crate::config::{persistir_config, semear_config, telas, ui};
 use checar::checar;
 use glacier_ui::{GlacierDaemon, style};
-use crate::config::{persistir_config, semear_config, telas, ui};
-
 
 fn main() -> std::process::ExitCode {
     if std::env::args().any(|a| a == "--check") {
@@ -42,7 +41,7 @@ fn main() -> std::process::ExitCode {
             if let Err(e) = motor.set_style(&style::PHANTOM) {
                 eprintln!("estilo: {e}");
             }
-            // O `.gss` é carregado daqui (e não por `<link rel="stylesheet">`) porque o
+            // O `.gss` é carregado daqui (e não por `link(rel = stylesheet)`) porque o
             // `href` de um link é resolvido contra o diretório de trabalho, e o app
             // precisa rodar de qualquer lugar — `ui_dir()` é quem sabe onde `ui/` está.
             if let Err(e) = motor.load_stylesheet(&ui("app.gss")) {

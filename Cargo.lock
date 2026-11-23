@@ -651,6 +651,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "console_error_panic_hook"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
+dependencies = [
+ "cfg-if",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "console_log"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86919cef3e37b9356ccf54d4421208c17ecfda01beae61393e7ffd72916c0ef1"
+dependencies = [
+ "log",
+ "web-sys",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -857,6 +877,27 @@ checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
 dependencies = [
  "block-buffer",
  "crypto-common",
+]
+
+[[package]]
+name = "dirs"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3e8aa94d75141228480295a7d0e7feb620b1a5ad9f12bc40be62411e38cce4e"
+dependencies = [
+ "dirs-sys",
+]
+
+[[package]]
+name = "dirs-sys"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e01a3366d27ee9890022452ee61b2b63a67e6f13f58900b651ff5665f0bb1fab"
+dependencies = [
+ "libc",
+ "option-ext",
+ "redox_users",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1097,6 +1138,12 @@ name = "float-cmp"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98de4bbd547a563b716d8dfa9aad1cb19bfab00f4fa09a6a4ed21dbcf44ce9c4"
+
+[[package]]
+name = "float_next_after"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bf7cc16383c4b8d58b9905a8509f02926ce3058053c056376248d958c9df1e8"
 
 [[package]]
 name = "foldhash"
@@ -1366,11 +1413,14 @@ dependencies = [
 
 [[package]]
 name = "glacier-ui"
-version = "0.75.0"
+version = "0.168.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebd1401d31c4b18d064e59a179b11b4316af19a66ed997d33c777bf31e8d61c6"
+checksum = "2aa4351ea8a55e553be7a669db0e9c1e617e20b26b92c79baa2072d0bd61b67e"
 dependencies = [
  "base64",
+ "console_error_panic_hook",
+ "console_log",
+ "dirs",
  "flate2",
  "futures",
  "http-body-util",
@@ -1379,15 +1429,23 @@ dependencies = [
  "hyper-util",
  "iced",
  "image",
+ "include_dir",
+ "log",
  "mlua",
  "notify-rust",
+ "pulldown-cmark",
  "regex",
  "rfd",
  "roxmltree 0.21.1",
  "rustls",
+ "serde",
  "serde_json",
  "tokio",
  "tokio-tungstenite",
+ "wasm-bindgen",
+ "wasmtimer",
+ "web-sys",
+ "windows-sys 0.59.0",
  "zip",
 ]
 
@@ -1717,6 +1775,7 @@ dependencies = [
  "image",
  "kamadak-exif",
  "log",
+ "lyon_path",
  "raw-window-handle",
  "rustc-hash 2.1.3",
  "thiserror 2.0.20",
@@ -1792,6 +1851,7 @@ dependencies = [
  "iced_debug",
  "iced_graphics",
  "log",
+ "lyon",
  "resvg",
  "rustc-hash 2.1.3",
  "thiserror 2.0.20",
@@ -1807,6 +1867,7 @@ dependencies = [
  "iced_renderer",
  "log",
  "num-traits",
+ "qrcode",
  "rustc-hash 2.1.3",
  "thiserror 2.0.20",
  "unicode-segmentation",
@@ -1876,6 +1937,25 @@ name = "imgref"
 version = "1.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "89194689a993ab15268672e99e7b0e19da2da3268ac682e8f02d29d4d1434cd7"
+
+[[package]]
+name = "include_dir"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "923d117408f1e49d914f1a379a309cffe4f18c05cf4e3d12e613a15fc81bd0dd"
+dependencies = [
+ "include_dir_macros",
+]
+
+[[package]]
+name = "include_dir_macros"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cab85a7ed0bd5f0e76d93846e0147172bed2e2d3f859bcc33a8d9699cad1a75"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
 
 [[package]]
 name = "indexmap"
@@ -2178,6 +2258,58 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e73f7d752fe2ef0a41f132b83d0be154c6ae0ed84967b4df80a16901866be075"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "lyon"
+version = "1.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd0578bdecb7d6d88987b8b2b1e3a4e2f81df9d0ece1078623324a567904e7b7"
+dependencies = [
+ "lyon_algorithms",
+ "lyon_tessellation",
+]
+
+[[package]]
+name = "lyon_algorithms"
+version = "1.0.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3a6b9d4e8b48acd531fbf1241ad9b270df6e60b6b92bdea1469f4f40899d805"
+dependencies = [
+ "lyon_path",
+ "num-traits",
+]
+
+[[package]]
+name = "lyon_geom"
+version = "1.0.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d82dd26aa4dc0b5b70b9115de59824842bcb43cf4a28e1b1e6d0ad148c93f93e"
+dependencies = [
+ "arrayvec",
+ "euclid",
+ "num-traits",
+]
+
+[[package]]
+name = "lyon_path"
+version = "1.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c463f9c428b7fc5ec885dcd39ce4aa61e29111d0e33483f6f98c74e89d8621e"
+dependencies = [
+ "lyon_geom",
+ "num-traits",
+]
+
+[[package]]
+name = "lyon_tessellation"
+version = "1.0.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd4872650e70dc907dd4f7ebc449d7d657a0d2658e423b2e724970870bbbf75b"
+dependencies = [
+ "float_next_after",
+ "lyon_path",
+ "num-traits",
 ]
 
 [[package]]
@@ -2903,6 +3035,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
+name = "option-ext"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
+
+[[package]]
 name = "orbclient"
 version = "0.3.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3177,6 +3315,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pulldown-cmark"
+version = "0.13.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3db2be46835f013dd3f4fa7f5f7402c537787b54ebb6fe2b94bbdd7e2669bb7b"
+dependencies = [
+ "bitflags 2.13.1",
+ "memchr",
+ "unicase",
+]
+
+[[package]]
 name = "pulp"
 version = "0.22.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3213,6 +3362,12 @@ checksum = "7f6d64c71eb498fe9eae14ce4ec935c555749aef511cca85b5568910d6e48001"
 dependencies = [
  "bytemuck",
 ]
+
+[[package]]
+name = "qrcode"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "166f136dfdb199f98186f3649cf7a0536534a61417a1a30221b492b4fb60ce3f"
 
 [[package]]
 name = "quick-error"
@@ -3429,6 +3584,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d678d17679829e73d371e96880897e98fee2ded7acc0a50bdf8af2affa4b2fe5"
 dependencies = [
  "bitflags 2.13.1",
+]
+
+[[package]]
+name = "redox_users"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60dc65c0ff1a7ae1294b0c67b9f14baf70b644404010370171787bfac1038fc0"
+dependencies = [
+ "libredox",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
@@ -4420,6 +4585,12 @@ dependencies = [
  "tempfile",
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "unicase"
+version = "2.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "357cc3acc6a036009fd6c973ed009037c732d60d0b4f6c673e9041497482a28f"
 
 [[package]]
 name = "unicode-bidi"

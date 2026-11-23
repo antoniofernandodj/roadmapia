@@ -1,10 +1,12 @@
-<!-- Casca mínima para rodar as suítes Luau dentro do motor de verdade.
-     Não renderiza nada de útil: quem consome é o modo de checagem do
-     roadmapia, que despacha a ação `rodar` e lê o resultado do contexto. -->
-<screen>
-  <resources>
-    <script src="suite.luau"></script>
-  </resources>
+// Casca mínima para rodar as suítes Luau dentro do motor de verdade.
+// Não renderiza nada de útil: quem consome é o modo de checagem do
+// roadmapia, que despacha a ação `rodar` e lê o resultado do contexto.
+screen {
+  resources {
+    script(src = suite.luau)
+  }
 
-  <container padding="8"><text>{teste_resumo}</text></container>
-</screen>
+  container(padding = 8) {
+    text("@teste_resumo")
+  }
+}

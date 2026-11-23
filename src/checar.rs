@@ -2,16 +2,7 @@ use std::path::PathBuf;
 
 use glacier_ui::GlacierUI;
 
-use crate::config::{
-    Config,
-    persistir_config,
-    secao,
-    semear_config,
-    telas,
-    ui,
-    ui_dir
-};
-
+use crate::config::{Config, persistir_config, secao, semear_config, telas, ui, ui_dir};
 
 /// `roadmapia --check`: registra tudo num motor descartável e sai com o número
 /// de erros. Carrega os templates, o `.gss` e cada `<script>` Luau (inclusive os
@@ -34,7 +25,7 @@ pub fn checar() -> std::process::ExitCode {
             }
         }
     }
-    // Renderizar cada tela força a avaliação da árvore inteira — `for-each`,
+    // Renderizar cada tela força a avaliação da árvore inteira — `:for_each`,
     // `if`, classes e placeholders — que o registro sozinho não exercita.
     for (nome, _) in telas() {
         motor.set_initial_screen(nome);
@@ -62,7 +53,6 @@ pub fn checar() -> std::process::ExitCode {
         std::process::ExitCode::from(falhas)
     }
 }
-
 
 /// Os botões do fim da fila: `próxima` e `concluir` se revezam, e `concluir`
 /// tem de FAZER algo de onde é clicável.
@@ -139,7 +129,6 @@ fn checar_botoes_do_fim(motor: &mut GlacierUI) -> u8 {
     falhas
 }
 
-
 /// A precedência da configuração, e a promessa de que gravar não destrói.
 ///
 /// São duas regras que só se veem quando quebram, e quebram caro: uma chave
@@ -215,7 +204,10 @@ fn checar_config_ini() -> u8 {
     let _ = std::fs::remove_file(&temp);
     let (cfg, _) = Config::carregar();
     if !tem_local {
-        dizer(!cfg.existe(), "um arquivo apagado não devia aparecer como existente");
+        dizer(
+            !cfg.existe(),
+            "um arquivo apagado não devia aparecer como existente",
+        );
         dizer(
             cfg.get(secao(), "api_key").is_none(),
             "arquivo ausente devia dar chave nenhuma",
@@ -361,7 +353,9 @@ preservar = sim
         use std::os::unix::fs::PermissionsExt;
         let (mut cfg, _) = Config::carregar();
         let _ = gravar!(cfg, "api_key", "chave-de-permissao");
-        let modo = std::fs::metadata(&temp).ok().map(|m| m.permissions().mode() & 0o777);
+        let modo = std::fs::metadata(&temp)
+            .ok()
+            .map(|m| m.permissions().mode() & 0o777);
         dizer(modo == Some(0o600), "o .ini não ficou 0600");
     }
 
@@ -380,7 +374,7 @@ preservar = sim
     falhas
 }
 
-/// Botões lado a lado numa mesma `Row` têm de ter a MESMA altura.
+/// Botões lado a lado numa mesma `row` têm de ter a MESMA altura.
 ///
 /// Alturas diferentes numa fila de botões saltam aos olhos — as bordas não
 /// fecham e os textos não assentam na mesma linha, mesmo com `align="Center"`.
@@ -412,10 +406,8 @@ fn checar_alinhamento_dos_botoes(motor: &mut GlacierUI) -> u8 {
             if alturas.len() > 1 {
                 let primeira = &alturas[0].1;
                 if alturas.iter().any(|(_, h)| h != primeira) {
-                    let detalhe: Vec<String> = alturas
-                        .iter()
-                        .map(|(t, h)| format!("{t:?}={h}"))
-                        .collect();
+                    let detalhe: Vec<String> =
+                        alturas.iter().map(|(t, h)| format!("{t:?}={h}")).collect();
                     problemas.push(format!(
                         "{tela}: alturas diferentes — {}",
                         detalhe.join("  ")
@@ -423,14 +415,14 @@ fn checar_alinhamento_dos_botoes(motor: &mut GlacierUI) -> u8 {
                 }
             }
 
-            // O eixo cruzado de uma `Row` é o `alignY`; sem ele os filhos
-            // encostam no topo. A armadilha que custou caro: `align="Center"`
+            // O eixo cruzado de uma `row` é o `align_y`; sem ele os filhos
+            // encostam no topo. A armadilha que custou caro: `align = center`
             // não é alias de nada neste parser — é aceito e DESCARTADO em
             // silêncio, então a fila parecia centrada no código e não estava.
             if !alturas.is_empty() && no.align_y().is_none() {
                 let quais: Vec<&str> = alturas.iter().map(|(t, _)| t.as_str()).collect();
                 problemas.push(format!(
-                    "{tela}: Row com botões sem alignY (usar alignY=\"Center\", não align) — {:?}",
+                    "{tela}: row com botões sem align_y (usar `align_y: center` no .gss, não align) — {:?}",
                     quais
                 ));
             }
@@ -448,8 +440,8 @@ fn checar_alinhamento_dos_botoes(motor: &mut GlacierUI) -> u8 {
     motor.define_data("sem_falhas", "false");
     motor.define_data("sem_perguntas", "false");
     motor.define_data("mostrar_avancado", "true");
-    // O painel de exercícios/prova vive sob `if="{tipo_curso}"` (em `inicio`) e
-    // `if="{tipo_e_curso}"` (em `revisao`), e as linhas dos campos sob os dois
+    // O painel de exercícios/prova vive sob `if = @tipo_curso` (em `inicio`) e
+    // `if = @tipo_e_curso` (em `revisao`), e as linhas dos campos sob os dois
     // interruptores. Sem semear tudo isto, os blocos são podados e este
     // checador nunca percorre as filas que eles contêm — a mesma armadilha
     // documentada logo abaixo para `rev_capitulos_ui`.
@@ -459,7 +451,7 @@ fn checar_alinhamento_dos_botoes(motor: &mut GlacierUI) -> u8 {
     motor.define_data("quer_prova", "true");
     motor.define_data("tem_prova", "true");
     // A tela `revisao`: sem isto o painel de edição do capítulo (se-lecionado
-    // via `c.selecionado` dentro do `for-each`) fica podado, e a fila de
+    // via `c.selecionado` dentro do `:for_each`) fica podado, e a fila de
     // botões que ele contém nunca é percorrida por este checador.
     motor.define_data("rev_tem_esboco", "true");
     motor.define_data("rev_tem_capitulos", "true");
@@ -487,9 +479,7 @@ fn checar_alinhamento_dos_botoes(motor: &mut GlacierUI) -> u8 {
     problemas.len().min(255) as u8
 }
 
-
-
-/// Prova que `hidden="{chave}"` responde ao contexto.
+/// Prova que `hidden = @chave` responde ao contexto.
 ///
 /// Guarda contra um bug que já custou caro: o glacier convertia `hidden`/
 /// `disabled` para `bool` no PARSE, comparando a string crua — `"{parado}"`
@@ -523,7 +513,7 @@ fn checar_binding_de_visibilidade(motor: &mut GlacierUI) -> u8 {
         (total, visiveis)
     }
 
-    // O spinner vive sob `if="{tem_perguntas}"`; sem isto, nada a inspecionar.
+    // O spinner vive sob `if = @tem_perguntas`; sem isto, nada a inspecionar.
     motor.define_data("tem_perguntas", "true");
 
     motor.define_data("parado", "true"); // nada em voo -> escondido
@@ -539,11 +529,11 @@ fn checar_binding_de_visibilidade(motor: &mut GlacierUI) -> u8 {
         return 1;
     }
     if visiveis_parado == 0 && visiveis_ocupado > 0 {
-        println!("✓ hidden=\"{{chave}}\" segue o contexto");
+        println!("✓ hidden = @chave segue o contexto");
         return 0;
     }
     eprintln!(
-        "✗ hidden=\"{{chave}}\" não segue o contexto: visíveis com parado=true: \
+        "✗ hidden = @chave não segue o contexto: visíveis com parado=true: \
          {visiveis_parado}/{total_parado}, com parado=false: {visiveis_ocupado}/{total_ocupado}"
     );
     1
@@ -601,7 +591,10 @@ fn simular_exercicios_e_prova(motor: &mut GlacierUI) -> u8 {
 
     // A conta aparece antes de custar — é a cultura da amostra em `producao`.
     // Obra padrão (10 × 20) com os padrões: 20 lotes + 4 partes = 24 chamadas.
-    let aviso = motor.get_data("aviso_avaliacao").cloned().unwrap_or_default();
+    let aviso = motor
+        .get_data("aviso_avaliacao")
+        .cloned()
+        .unwrap_or_default();
     if !aviso.contains("24 chamadas") || !aviso.contains('%') {
         eprintln!("✗ o aviso de custo não diz o que vai custar: {aviso:?}");
         falhas += 1;
@@ -613,7 +606,12 @@ fn simular_exercicios_e_prova(motor: &mut GlacierUI) -> u8 {
         eprintln!("✗ o painel de exercícios continua visível fora de 'curso'");
         falhas += 1;
     }
-    falhas += verificar(motor, "tipo_e_curso", "false", "fora de curso a projeção fica muda");
+    falhas += verificar(
+        motor,
+        "tipo_e_curso",
+        "false",
+        "fora de curso a projeção fica muda",
+    );
 
     // …mas o que foi digitado sobrevive à ida e volta: quem marca "guia" por
     // engano e volta não pode encontrar o campo zerado.
@@ -624,7 +622,12 @@ fn simular_exercicios_e_prova(motor: &mut GlacierUI) -> u8 {
     });
     let _ = motor.dispatch(&M::UiClick("escolher_tipo:guia".into()));
     let _ = motor.dispatch(&M::UiClick("escolher_tipo:curso".into()));
-    falhas += verificar(motor, "n_exercicios", "16", "trocar de tipo preserva o número digitado");
+    falhas += verificar(
+        motor,
+        "n_exercicios",
+        "16",
+        "trocar de tipo preserva o número digitado",
+    );
 
     // O campo guarda o texto CRU. Escrever o valor saneado de volta a cada
     // tecla brigaria com quem digita: apagar "16" para escrever "20" passa por
@@ -633,15 +636,28 @@ fn simular_exercicios_e_prova(motor: &mut GlacierUI) -> u8 {
         action: "n_exercicios_mudou".into(),
         value: "".into(),
     });
-    falhas += verificar(motor, "n_exercicios", "", "o campo aceita ficar vazio enquanto se digita");
+    falhas += verificar(
+        motor,
+        "n_exercicios",
+        "",
+        "o campo aceita ficar vazio enquanto se digita",
+    );
 
     // E um valor impossível não derruba a tela nem some da vista: vira o aviso.
     let _ = motor.dispatch(&M::UiInputChanged {
         action: "n_questoes_mudou".into(),
         value: "não é número".into(),
     });
-    falhas += verificar(motor, "n_questoes", "não é número", "texto inválido fica no campo");
-    let aviso = motor.get_data("aviso_avaliacao").cloned().unwrap_or_default();
+    falhas += verificar(
+        motor,
+        "n_questoes",
+        "não é número",
+        "texto inválido fica no campo",
+    );
+    let aviso = motor
+        .get_data("aviso_avaliacao")
+        .cloned()
+        .unwrap_or_default();
     if aviso.is_empty() {
         eprintln!("✗ com entrada inválida o aviso de custo sumiu em vez de cair no padrão");
         falhas += 1;
@@ -694,7 +710,10 @@ fn simular_entrevista(motor: &mut GlacierUI) -> u8 {
         let _ = motor.dispatch(&M::UiClick(acao.into()));
     }
     falhas += verificar(motor, "respondidas", "1", "marcar opções");
-    let respostas = motor.get_data("respostas_json").cloned().unwrap_or_default();
+    let respostas = motor
+        .get_data("respostas_json")
+        .cloned()
+        .unwrap_or_default();
     if !respostas.contains("Avançado") || respostas.contains("Iniciante") {
         eprintln!("✗ alternar não é um toggle: respostas_json = {respostas}");
         falhas += 1;
@@ -714,13 +733,23 @@ fn simular_entrevista(motor: &mut GlacierUI) -> u8 {
     // `hidden`, que não tem negação no template — daí as duas chaves opostas.
     falhas += verificar(motor, "ja_no_fim", "false", "na última, 'concluir' aparece");
     let _ = motor.dispatch(&M::UiClick("proxima".into()));
-    falhas += verificar(motor, "q_num", "2", "'próxima' na última não avança além do fim");
+    falhas += verificar(
+        motor,
+        "q_num",
+        "2",
+        "'próxima' na última não avança além do fim",
+    );
 
     // Voltar: a resposta da pergunta 1 tem de reaparecer marcada (o "✓" no
     // rótulo é o estado de seleção que a tela desenha).
     let _ = motor.dispatch(&M::UiClick("anterior".into()));
     falhas += verificar(motor, "q_num", "1", "voltar de pergunta");
-    falhas += verificar(motor, "eh_ultima", "false", "fora da última, 'próxima' volta");
+    falhas += verificar(
+        motor,
+        "eh_ultima",
+        "false",
+        "fora da última, 'próxima' volta",
+    );
     let opcoes = motor.get_data("q_opcoes").cloned().unwrap_or_default();
     if !opcoes.contains("✓  Avançado") {
         eprintln!("✗ a seleção não sobreviveu à navegação: q_opcoes = {opcoes}");
@@ -803,19 +832,42 @@ fn simular_revisao(motor: &mut GlacierUI) -> u8 {
     falhas += verificar(motor, "rev_tem_esboco", "true", "esboço lido");
     falhas += verificar(motor, "rev_n_capitulos", "2", "contagem de capítulos");
     falhas += verificar(motor, "rev_tem_selecao", "true", "capítulo selecionado");
-    falhas += verificar(motor, "rev_cap_titulo", "Primeiro", "painel abriu no capítulo certo");
-    falhas += verificar(motor, "sub_titulo_1", "A", "chave por linha do 1º subcapítulo");
-    falhas += verificar(motor, "sub_titulo_2", "B", "chave por linha do 2º subcapítulo");
+    falhas += verificar(
+        motor,
+        "rev_cap_titulo",
+        "Primeiro",
+        "painel abriu no capítulo certo",
+    );
+    falhas += verificar(
+        motor,
+        "sub_titulo_1",
+        "A",
+        "chave por linha do 1º subcapítulo",
+    );
+    falhas += verificar(
+        motor,
+        "sub_titulo_2",
+        "B",
+        "chave por linha do 2º subcapítulo",
+    );
 
-    // Editar o título do capítulo selecionado — mesma ação que o `<input>` do
+    // Editar o título do capítulo selecionado — mesma ação que o `input` do
     // painel dispara a cada tecla.
     let _ = motor.dispatch(&M::UiInputChanged {
         action: "titulo_cap_mudou".into(),
         value: "Primeiro (editado)".into(),
     });
-    falhas += verificar(motor, "rev_cap_titulo", "Primeiro (editado)", "editar título do capítulo");
+    falhas += verificar(
+        motor,
+        "rev_cap_titulo",
+        "Primeiro (editado)",
+        "editar título do capítulo",
+    );
     let _ = motor.dispatch(&M::UiClick("selecionar_capitulo:1".into())); // reprojeta os cards
-    let cards = motor.get_data("rev_capitulos_ui").cloned().unwrap_or_default();
+    let cards = motor
+        .get_data("rev_capitulos_ui")
+        .cloned()
+        .unwrap_or_default();
     if !cards.contains("Primeiro (editado)") {
         eprintln!("✗ a edição do título não chegou aos cards: {cards}");
         falhas += 1;
@@ -823,7 +875,12 @@ fn simular_revisao(motor: &mut GlacierUI) -> u8 {
 
     // Adicionar e remover subcapítulo.
     let _ = motor.dispatch(&M::UiClick("adicionar_sub".into()));
-    falhas += verificar(motor, "sub_titulo_3", "Novo subcapítulo", "adicionar_sub acrescenta no molde certo");
+    falhas += verificar(
+        motor,
+        "sub_titulo_3",
+        "Novo subcapítulo",
+        "adicionar_sub acrescenta no molde certo",
+    );
     let _ = motor.dispatch(&M::UiClick("excluir_sub:3".into()));
     let subs = motor.get_data("rev_subs_ui").cloned().unwrap_or_default();
     if subs.contains("\"n\":\"3\"") {
@@ -836,7 +893,10 @@ fn simular_revisao(motor: &mut GlacierUI) -> u8 {
     // CAMPOS dentro de cada objeto JSON não é uma garantia que valha a pena
     // travar num teste.
     let _ = motor.dispatch(&M::UiClick("mover_baixo:1".into()));
-    let cards2 = motor.get_data("rev_capitulos_ui").cloned().unwrap_or_default();
+    let cards2 = motor
+        .get_data("rev_capitulos_ui")
+        .cloned()
+        .unwrap_or_default();
     let pos_segundo = cards2.find("Segundo");
     let pos_obj2 = cards2.find(r#""n":"2""#);
     if !matches!((pos_segundo, pos_obj2), (Some(a), Some(b)) if a < b) {
@@ -848,11 +908,21 @@ fn simular_revisao(motor: &mut GlacierUI) -> u8 {
     // Confirmar com o plano válido: monta o `Plano` de verdade e navega, sem
     // rede nenhuma envolvida (`O.montar` é local).
     let _ = motor.dispatch(&M::UiClick("confirmar".into()));
-    falhas += verificar(motor, "tem_erro", "false", "confirmar um plano válido não gera erro");
+    falhas += verificar(
+        motor,
+        "tem_erro",
+        "false",
+        "confirmar um plano válido não gera erro",
+    );
     falhas += verificar(motor, "tem_obra", "true", "confirmar monta e grava o Plano");
     falhas += verificar(motor, "n_capitulos", "2", "…com os 2 capítulos do esboço");
     // 3 trechos + 2 aberturas + 2 lotes de exercícios + 1 parte de prova.
-    falhas += verificar(motor, "total_tarefas", "8", "…e as tarefas de avaliação materializadas");
+    falhas += verificar(
+        motor,
+        "total_tarefas",
+        "8",
+        "…e as tarefas de avaliação materializadas",
+    );
     let plano_bruto = motor.get_data("obra_json").cloned().unwrap_or_default();
     if !plano_bruto.contains("exercicios-01.md") || !plano_bruto.contains("prova/parte-01.md") {
         eprintln!("✗ confirmar não materializou exercícios/prova no plano: {plano_bruto}");
@@ -876,7 +946,12 @@ fn simular_revisao(motor: &mut GlacierUI) -> u8 {
     motor.define_data("erro", "");
     motor.define_data("tem_erro", "false");
     let _ = motor.dispatch(&M::UiClick("confirmar".into()));
-    falhas += verificar(motor, "tem_erro", "true", "confirmar um plano incompleto barra");
+    falhas += verificar(
+        motor,
+        "tem_erro",
+        "true",
+        "confirmar um plano incompleto barra",
+    );
     if motor.get_data("erro").map(String::is_empty).unwrap_or(true) {
         eprintln!("✗ confirmar um plano incompleto: `erro` ficou vazio");
         falhas += 1;
@@ -922,7 +997,12 @@ fn simular_revisao(motor: &mut GlacierUI) -> u8 {
         eprintln!("✗ desfazer não repôs o foco original: {esb}");
         falhas += 1;
     }
-    falhas += verificar(motor, "tem_erro", "false", "desfazer um achado válido não gera erro");
+    falhas += verificar(
+        motor,
+        "tem_erro",
+        "false",
+        "desfazer um achado válido não gera erro",
+    );
 
     // Agora com o plano mexido: o subcapítulo 1.1 já não é o mesmo.
     motor.define_data(
@@ -938,7 +1018,12 @@ fn simular_revisao(motor: &mut GlacierUI) -> u8 {
         eprintln!("✗ desfazer mexeu no subcapítulo ERRADO: {esb2}");
         falhas += 1;
     }
-    falhas += verificar(motor, "tem_erro", "true", "índice velho é recusado com aviso");
+    falhas += verificar(
+        motor,
+        "tem_erro",
+        "true",
+        "índice velho é recusado com aviso",
+    );
 
     // `confirmar` chama `O.gravar_sumario`, que grava em disco de verdade
     // (`write_file` aqui não é o dublê de `tests/luau/fila.luau` — só aquela
@@ -999,7 +1084,12 @@ fn simular_producao(motor: &mut GlacierUI) -> u8 {
 
     // 3 trechos + 2 aberturas + 2 lotes de exercícios + 1 parte de prova = 8.
     falhas += verificar(motor, "tem_obra", "true", "plano lido");
-    falhas += verificar(motor, "total_tarefas", "8", "exercícios e prova contam como tarefa");
+    falhas += verificar(
+        motor,
+        "total_tarefas",
+        "8",
+        "exercícios e prova contam como tarefa",
+    );
     falhas += verificar(motor, "prontos", "1", "contagem de prontos");
     falhas += verificar(motor, "tem_erros", "true", "o trecho falho é visível");
     falhas += verificar(motor, "sem_falhas", "false", "o botão de refazer aparece");
@@ -1026,7 +1116,12 @@ fn simular_producao(motor: &mut GlacierUI) -> u8 {
     // "Refazer falhas" devolve o trecho com erro à fila, sem perder o pronto.
     let _ = motor.dispatch(&M::UiClick("refazer_falhas".into()));
     falhas += verificar(motor, "tem_erros", "false", "refazer falhas limpa o erro");
-    falhas += verificar(motor, "prontos", "1", "refazer falhas preserva o que já estava pronto");
+    falhas += verificar(
+        motor,
+        "prontos",
+        "1",
+        "refazer falhas preserva o que já estava pronto",
+    );
 
     // A transição `gerar` -> `producao`: quem grava o plano tem de PROJETÁ-LO,
     // porque o `init` da tela de produção já rodou no arranque, com o contexto
@@ -1083,10 +1178,13 @@ fn simular_log(motor: &mut GlacierUI) -> u8 {
         eprintln!("✗ log: sem linha no formato esperado. Conteúdo:\n{conteudo}");
         return 1;
     }
-    println!("✓ log ({} linhas em {})", conteudo.lines().count(), caminho.display());
+    println!(
+        "✓ log ({} linhas em {})",
+        conteudo.lines().count(),
+        caminho.display()
+    );
     0
 }
-
 
 /// Roda as suítes Luau (`tests/luau/`) dentro do interpretador do motor.
 ///

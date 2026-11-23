@@ -399,8 +399,8 @@ end
 ---
 --- Os subcapítulos do painel usam uma chave de contexto POR LINHA
 --- (`sub_titulo_<n>`/`sub_foco_<n>`, `n` = posição dentro do capítulo) em vez
---- de uma lista só — é o que permite `N` `<input>` independentes e
---- editáveis vindos de um `for-each` sem eles pisarem uns nos outros; reusar
+--- de uma lista só — é o que permite `N` `input` independentes e
+--- editáveis vindos de um `:for_each` sem eles pisarem uns nos outros; reusar
 --- uma chave só por linha faria todo input do capítulo mostrar o MESMO texto.
 --- Reprojetar só troca esse conjunto quando o capítulo selecionado muda — uma
 --- tecla dentro de um campo não chama isto (veria `livre_mudou` em

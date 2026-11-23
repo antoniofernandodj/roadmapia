@@ -1,147 +1,152 @@
-<!-- Tela 3 — a produção.
-   O esboço vira uma fila de centenas de trechos, e um pool de workers os
-   escreve em paralelo, um arquivo por trecho. A tela mostra o plano antes de
-   começar (com a conta a pagar), o avanço durante, e o que ficou pelo
-   caminho depois. -->
-<screen>
-  <resources>
-    <script src="scripts/producao.luau"></script>
-  </resources>
+// Tela 3 — a produção.
+// O esboço vira uma fila de centenas de trechos, e um pool de workers os
+// escreve em paralelo, um arquivo por trecho. A tela mostra o plano antes de
+// começar (com a conta a pagar), o avanço durante, e o que ficou pelo
+// caminho depois.
+screen {
+  resources {
+    script(src = "scripts/producao.luau")
+  }
 
-  <container class="tela">
-    <column class="coluna cresce">
+  container(class = tela) {
+    column(class = "coluna cresce") {
+      // ── cabeçalho ────────────────────────────────────────────────────
+      row(class = linha) {
+        column(class = dupla) {
+          text("@obra_titulo", class = titulo-obra)
+          text("@obra_subtitulo", class = nota)
+        }
 
-    <!-- ── cabeçalho ──────────────────────────────────────────────────── -->
-    <row class="linha">
-      <column class="dupla">
-        <text class="titulo-obra" content="{obra_titulo}" />
-        <text class="nota" content="{obra_subtitulo}" />
-      </column>
-      <button
-        class="btn-sutil"
-        text="← respostas"
-        navigate_to="perguntas"
-      />
-      <button
-        class="btn-sutil"
-        text="início"
-        navigate_to="inicio"
-      />
-    </row>
+        button("← respostas", class = btn-sutil, navigate_to = perguntas)
+        button(início, class = btn-sutil, navigate_to = inicio)
+      }
 
-    <!-- ── sem plano ainda ────────────────────────────────────────────── -->
-    <column class="painel-alto" if="{tem_obra}" not_equals="true">
-      <text class="pergunta">Nada planejado ainda</text>
-      <text class="ajuda">Responda a entrevista e clique em Generate.</text>
-      <button class="btn-primario" text="Ir para as perguntas" navigate_to="perguntas" />
-    </column>
+      // ── sem plano ainda ──────────────────────────────────────────────
+      column(class = painel-alto, if = @tem_obra, not_equals = true) {
+        text("Nada planejado ainda", class = pergunta)
 
-    <!-- ── painel de avanço ───────────────────────────────────────────── -->
-    <column class="painel" if="{tem_obra}" equals="true">
-      <row class="linha">
-        <text class="contador">{prontos} / {total_tarefas} trechos</text>
-        <text class="nota">·  {n_capitulos} capítulos</text>
-        <text class="nota" if="{tem_erros}" equals="true">·  {rotulo_erros}</text>
-        <text class="largo" content="" />
-        <text class="ok">{rotulo_custo}</text>
-      </row>
-      <progressbar class="progresso-verde" value="pct" min="0" max="100" />
-      <row class="linha">
-        <spinner class="spinner" hidden="{parado}" />
-        <text class="corpo largo">{status}</text>
-      </row>
-    </column>
+        text("Responda a entrevista e clique em Generate.", class = ajuda)
 
-    <!-- ── os capítulos ───────────────────────────────────────────────── -->
-    <scrollable
-      class="largo cresce"
-      direction="vertical"
-      if="{tem_obra}"
-      equals="true"
-    >
-    <column class="lista">
-      <row class="faixa linha" for-each="capitulos_ui" var="c">
-      <text class="contador num">{c.n}</text>
-      <column class="dupla">
-        <text class="corpo">{c.titulo}</text>
-        <text class="nota">{c.detalhe}</text>
-      </column>
-      <text class="marca" color="{c.cor}">{c.marca}</text>
-      </row>
+        button(
+          "Ir para as perguntas",
+          class = btn-primario,
+          navigate_to = perguntas,
+        )
+      }
 
-      <!-- A prova não cabe na lista acima: ela não pertence a capítulo
-        nenhum, atravessa a obra inteira. Daí a linha própria, e sem número
-        de capítulo na coluna da esquerda. -->
-      <row class="faixa linha" if="{tem_prova}" equals="true">
-        <text class="contador num">★</text>
-        <column class="dupla">
-          <text class="corpo">Prova final</text>
-          <text class="nota">{prova_detalhe}</text>
-        </column>
-        <text class="marca" color="{prova_cor}">{prova_marca}</text>
-      </row>
-    </column>
-    </scrollable>
+      // ── painel de avanço ─────────────────────────────────────────────
+      column(class = painel, if = @tem_obra, equals = true) {
+        row(class = linha) {
+          text("@prontos / @total_tarefas trechos", class = contador)
+          text("· @n_capitulos capítulos", class = nota)
 
-    <!-- ── repetição entre capítulos ──────────────────────────────────── -->
-    <!-- O placar da correção contra reensino: cada linha é um conceito que um
-      trecho declarou definir e que outro CAPÍTULO já tinha definido. Só
-      aparece quando há alguma — uma lista vazia permanente vira ruído. -->
-    <column class="painel" if="{tem_repeticoes}" equals="true">
-      <text class="rotulo">{repeticoes_rotulo}</text>
-      <text class="ajuda">
-        O trecho da direita já era dono do assunto. Vale reler os da esquerda.
-      </text>
-      <column class="lista">
-        <row class="linha" for-each="repeticoes_ui" var="r">
-          <text class="corpo largo">{r.termo}</text>
-          <text class="nota">{r.onde}</text>
-        </row>
-      </column>
-    </column>
+          text("· @rotulo_erros", class = nota, if = @tem_erros, equals = true)
 
-    <container class="faixa" if="{tem_erro}" equals="true">
-      <text class="erro">{erro}</text>
-    </container>
+          text("", class = largo)
+          text("@rotulo_custo", class = ok)
+        }
 
-    <!-- ── ações ──────────────────────────────────────────────────────── -->
-    <row class="painel linha" if="{tem_obra}" equals="true">
-      <button
-        class="btn-gerar"
-        text="{rotulo_produzir}"
-        on_click="produzir"
-        hidden="{produzindo}"
-        disabled="{nada_a_fazer}"
-      />
-      <button
-        class="btn"
-        text="Parar"
-        on_click="parar"
-        hidden="{parado}"
-      />
-      <button
-        class="btn"
-        text="Refazer falhas"
-        on_click="refazer_falhas"
-        hidden="{sem_falhas}"
-        disabled="{produzindo}"
-      />
-      <button
-        class="btn"
-        text="Copiar caminho"
-        on_click="clipboard:obra_pasta"
-      />
-      <button
-        class="btn"
-        text="Salvar obra"
-        on_click="salvar_obra"
-        if="{pode_salvar}"
-        equals="true"
-      />
-      <text class="largo" content="" />
-      <text class="nota">{obra_pasta}</text>
-    </row>
+        progressbar(class = progresso-verde, :value = pct, min = 0, max = 100)
 
-    </column>
-  </container>
-</screen>
+        row(class = linha) {
+          spinner(class = spinner, hidden = @parado)
+          text("@status", class = "corpo largo")
+        }
+      }
+
+      // ── os capítulos ─────────────────────────────────────────────────
+      scrollable(
+        class = "largo cresce",
+        direction = vertical,
+        if = @tem_obra,
+        equals = true,
+      ) {
+        column(class = lista) {
+          row(class = "faixa linha", :for_each = capitulos_ui, var = c) {
+            text("@c.n", class = "contador num")
+
+            column(class = dupla) {
+              text("@c.titulo", class = corpo)
+              text("@c.detalhe", class = nota)
+            }
+
+            text("@c.marca", class = marca, color = @c.cor)
+          }
+
+          // A prova não cabe na lista acima: ela não pertence a capítulo
+          // nenhum, atravessa a obra inteira. Daí a linha própria, e sem número
+          // de capítulo na coluna da esquerda.
+          row(class = "faixa linha", if = @tem_prova, equals = true) {
+            text("★", class = "contador num")
+
+            column(class = dupla) {
+              text("Prova final", class = corpo)
+              text("@prova_detalhe", class = nota)
+            }
+
+            text("@prova_marca", class = marca, color = @prova_cor)
+          }
+        }
+      }
+
+      // ── repetição entre capítulos ────────────────────────────────────
+      // O placar da correção contra reensino: cada linha é um conceito que um
+      // trecho declarou definir e que outro CAPÍTULO já tinha definido. Só
+      // aparece quando há alguma — uma lista vazia permanente vira ruído.
+      column(class = painel, if = @tem_repeticoes, equals = true) {
+        text("@repeticoes_rotulo", class = rotulo)
+
+        text(
+          """
+            O trecho da direita já era dono do assunto. Vale reler os da
+            esquerda.
+          """,
+          class = ajuda,
+        )
+
+        column(class = lista) {
+          row(class = linha, :for_each = repeticoes_ui, var = r) {
+            text("@r.termo", class = "corpo largo")
+            text("@r.onde", class = nota)
+          }
+        }
+      }
+
+      alert("@erro", variant = error, if = @tem_erro, equals = true)
+
+      // ── ações ────────────────────────────────────────────────────────
+      row(class = "painel linha", if = @tem_obra, equals = true) {
+        button(
+          "@rotulo_produzir",
+          class = btn-gerar,
+          on_click = produzir,
+          hidden = @produzindo,
+          disabled = @nada_a_fazer,
+        )
+
+        button(Parar, class = btn, on_click = parar, hidden = @parado)
+
+        button(
+          "Refazer falhas",
+          class = btn,
+          on_click = refazer_falhas,
+          hidden = @sem_falhas,
+          disabled = @produzindo,
+        )
+
+        button("Copiar caminho", class = btn, on_click = clipboard:obra_pasta)
+
+        button(
+          "Salvar obra",
+          class = btn,
+          on_click = salvar_obra,
+          if = @pode_salvar,
+          equals = true,
+        )
+
+        text("", class = largo)
+        text("@obra_pasta", class = nota)
+      }
+    }
+  }
+}

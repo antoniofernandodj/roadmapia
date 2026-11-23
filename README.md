@@ -5,7 +5,7 @@ prompt só: o app primeiro **entrevista você** sobre o tema, com perguntas que 
 própria IA formula a partir do que você digitou, e então **escreve a obra
 inteira**, um arquivo por trecho.
 
-Interface em [glacier-ui](../glacier-ui) (XML declarativo + Luau), modelos via
+Interface em [glacier-ui](../glacier-ui) 0.168 (markup `.gv` em blocos + Luau), modelos via
 [OpenRouter](https://openrouter.ai).
 
 ## O fluxo
@@ -384,18 +384,17 @@ possível.
   perguntar sobre formato ou mídia — sem isso o modelo pergunta sobre videoaulas
   e cria uma expectativa que a obra em Markdown não pode cumprir.
 - **Ações parametrizadas.** Um chip de opção despacha `alternar:<n>`; o motor
-  fatia no `:` e chama `alternar(n)`. É o que deixa um `for-each` gerar N botões
+  fatia no `:` e chama `alternar(n)`. É o que deixa um `:for_each` gerar N botões
   distintos sem N funções.
-- **`align` é aceito e ignorado.** No parser do glacier os aliases de `alignX`
-  são só `alignX`/`align_x`/`align-x`/`alinhamento_x` — `align` não casa nada
-  (embora o README da lib o documente como alias). E o eixo cruzado de uma
-  `Row` é o `alignY`, não o `alignX`. Resultado: `<Row align="Center">` parece
-  centrado no código e encosta no topo na tela. O `--check` reprova qualquer
-  `Row` com botões que não declare `alignY`.
+- **`align` é aceito e ignorado.** O motor só lê `align_x`/`align_y` (e o
+  `align` do `popover`); o eixo cruzado de uma `row` é o `align_y`, não o
+  `align_x`. Resultado: `row(align = center)` parece centrado no código e
+  encosta no topo na tela. O `--check` reprova qualquer `row` com botões que não
+  declare `align_y` (aqui, pela classe `.linha`).
 - **Botões de uma fila têm altura fixa igual.** Alturas diferentes lado a lado
   saltam aos olhos; as classes de ação são todas 44px e o `--check` percorre as
   três telas reprovando qualquer `Row` que misture alturas.
-- **`if` testa verdade, não "não vazio".** `if="{erro}"` com uma mensagem
+- **`if` testa verdade, não "não vazio".** `if = @erro` com uma mensagem
   qualquer é *falso* — daí o par `erro` (texto) + `tem_erro` (interruptor). O
   `--check` tem uma asserção para isso.
 - **Campo de número guarda o texto cru.** Os campos de "quantos exercícios" e

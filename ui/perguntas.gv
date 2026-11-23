@@ -1,164 +1,176 @@
-<!-- Tela 2 — a entrevista.
-   Uma pergunta por vez. As opções vêm da IA e são chips clicáveis (multi-
-   seleção); logo abaixo, um campo livre para quem quer escrever a própria
-   resposta. As duas coisas convivem: dá para marcar duas opções E completar
-   por escrito. -->
-<screen>
-  <resources>
-    <script src="scripts/perguntas.luau"></script>
-  </resources>
+// Tela 2 — a entrevista.
+// Uma pergunta por vez. As opções vêm da IA e são chips clicáveis (multi-
+// seleção); logo abaixo, um campo livre para quem quer escrever a própria
+// resposta. As duas coisas convivem: dá para marcar duas opções E completar
+// por escrito.
+screen {
+  resources {
+    script(src = "scripts/perguntas.luau")
+  }
 
-  <container class="tela">
-    <container class="centro cresce">
-      <column class="miolo cresce">
+  container(class = tela) {
+    container(class = "centro cresce") {
+      column(class = "miolo cresce") {
+        // ── cabeçalho: contexto + progresso ──────────────────────────────
+        row(class = linha) {
+          column(class = dupla) {
+            text("@tipo_rotulo · @assunto", class = rotulo)
 
-        <!-- ── cabeçalho: contexto + progresso ────────────────────────────── -->
-        <row class="linha">
-          <column class="dupla">
-            <text class="rotulo">{tipo_rotulo} · {assunto}</text>
-            <text class="nota">
-              Pergunta {q_num} de {total_perguntas} · {respondidas} respondida(s)
-            </text>
-          </column>
-          <button
-            class="btn-sutil"
-            text="← início"
-            navigate_to="inicio"
-          />
-        </row>
+            text(
+              """
+                Pergunta @q_num de @total_perguntas · @respondidas respondida(s)
+              """,
+              class = nota,
+            )
+          }
 
-        <progressbar class="progresso" value="progresso" min="0" max="100" />
+          button("← início", class = btn-sutil, navigate_to = inicio)
+        }
 
-        <!-- ── a pergunta ─────────────────────────────────────────────────── -->
-        <column class="painel-alto secao cresce" if="{tem_perguntas}" equals="true">
+        progressbar(class = progresso, :value = progresso, min = 0, max = 100)
 
-          <column class="grupo">
-            <text class="pergunta">{q_texto}</text>
-            <text class="ajuda">{q_ajuda}</text>
-          </column>
+        // ── a pergunta ───────────────────────────────────────────────────
+        column(
+          class = "painel-alto secao cresce",
+          if = @tem_perguntas,
+          equals = true,
+        ) {
+          column(class = grupo) {
+            text("@q_texto", class = pergunta)
+            text("@q_ajuda", class = ajuda)
+          }
 
-          <scrollable class="largo cresce" direction="vertical">
-          <column class="secao">
+          scrollable(class = "largo cresce", direction = vertical) {
+            column(class = secao) {
+              // Opções sugeridas pela IA. `cor` e o prefixo ✓/○ do rótulo são
+              // calculados no script — o estado de seleção mora nas respostas,
+              // não numa chave de contexto por opção.
+              column(class = lista, if = @tem_opcoes, equals = true) {
+                text(
+                  "SUGESTÕES — CLIQUE PARA MARCAR (PODE MAIS DE UMA)",
+                  class = rotulo,
+                )
 
-            <!-- Opções sugeridas pela IA. `cor` e o prefixo ✓/○ do rótulo são
-              calculados no script — o estado de seleção mora nas respostas,
-              não numa chave de contexto por opção. -->
-            <column class="lista" if="{tem_opcoes}" equals="true">
-              <text class="rotulo">
-                SUGESTÕES — CLIQUE PARA MARCAR (PODE MAIS DE UMA)
-              </text>
-              <button
-                class="opcao"
-                for-each="q_opcoes"
-                var="o"
-                text="{o.rotulo}" background="{o.cor}"
-                on_click="alternar:{o.i}"
-              />
-            </column>
+                button(
+                  "@o.rotulo",
+                  class = opcao,
+                  :for_each = q_opcoes,
+                  var = o,
+                  background = @o.cor,
+                  on_click = alternar:@o.i,
+                )
+              }
 
-            <!-- ...e/ou a resposta em texto livre. -->
-            <column class="grupo">
-              <text class="rotulo">OU RESPONDA COM SUAS PALAVRAS</text>
-              <textarea
-                class="campo campo-alto"
-                placeholder="opcional — complementa as opções marcadas"
-                value="q_livre" on_change="livre_mudou"
-              />
-            </column>
+              // ...e/ou a resposta em texto livre.
+              column(class = grupo) {
+                text("OU RESPONDA COM SUAS PALAVRAS", class = rotulo)
 
-          </column>
-          </scrollable>
+                textarea(
+                  class = "campo campo-alto",
+                  placeholder = "opcional — complementa as opções marcadas",
+                  :value = q_livre,
+                  on_change = livre_mudou,
+                )
+              }
+            }
+          }
 
-          <!-- ── navegação entre perguntas ──────────────────────────────── -->
-          <row class="linha">
-            <button
-              class="btn"
-              text="← anterior"
-              on_click="anterior"
-              disabled="{eh_primeira}"
-            />
-            <!-- Na última pergunta, "próxima" some (não há para onde ir) e dá
-              lugar a "concluir →", que salta para o fim da fila. Sem isso,
-              quem chegava ao fim ficava clicando em "próxima" sem efeito. -->
-            <button
-              class="btn-primario"
-              text="próxima →"
-              on_click="proxima"
-              hidden="{eh_ultima}"
-            />
-            <button
-              class="btn-primario"
-              text="concluir →"
-              on_click="concluir"
-              hidden="{ja_no_fim}"
-            />
-            <button
-              class="btn"
-              text="+ aprofundar"
-              on_click="aprofundar"
-              disabled="{ocupado}"
-            />
-            <text class="largo" content="" />
-            <spinner class="spinner" hidden="{parado}" />
-            <text class="corpo">{status}</text>
-          </row>
+          // ── navegação entre perguntas ────────────────────────────────
+          row(class = linha) {
+            button(
+              "← anterior",
+              class = btn,
+              on_click = anterior,
+              disabled = @eh_primeira,
+            )
 
-        </column>
+            // Na última pergunta, "próxima" some (não há para onde ir) e dá
+            // lugar a "concluir →", que salta para o fim da fila. Sem isso,
+            // quem chegava ao fim ficava clicando em "próxima" sem efeito.
+            button(
+              "próxima →",
+              class = btn-primario,
+              on_click = proxima,
+              hidden = @eh_ultima,
+            )
 
-        <!-- Sem perguntas na memória (entrou direto nesta tela). -->
-        <column class="painel-alto" if="{tem_perguntas}" not_equals="true">
-          <text class="pergunta">Nenhuma entrevista em andamento</text>
-          <text class="ajuda">Volte ao início, diga o assunto e clique em Refinar.</text>
-          <button
-            class="btn-primario"
-            text="Ir para o início"
-            navigate_to="inicio"
-          />
-        </column>
+            button(
+              "concluir →",
+              class = btn-primario,
+              on_click = concluir,
+              hidden = @ja_no_fim,
+            )
 
-        <container class="faixa" if="{tem_erro}" equals="true">
-          <text class="erro" content="{erro}" />
-        </container>
+            button(
+              "+ aprofundar",
+              class = btn,
+              on_click = aprofundar,
+              disabled = @ocupado,
+            )
 
-        <!-- ── observações gerais + gerar ─────────────────────────────────── -->
-        <column class="painel" if="{tem_perguntas}" equals="true">
+            text("", class = largo)
+            spinner(class = spinner, hidden = @parado)
+            text("@status", class = corpo)
+          }
+        }
 
-          <!-- O que a entrevista não pergunta. As perguntas são geradas pela IA
-            a partir do assunto, então elas cobrem o assunto — nunca o COMO:
-            tom, profundidade, o que evitar, em que linguagem os exemplos. Isto
-            entra nos três prompts (esboço, cada trecho e cada abertura), e é a
-            única coisa da tela que alcança as centenas de chamadas da produção.
+        // Sem perguntas na memória (entrou direto nesta tela).
+        column(class = painel-alto, if = @tem_perguntas, not_equals = true) {
+          text("Nenhuma entrevista em andamento", class = pergunta)
 
-            Sem `on_change`: o motor já espelha o texto do editor no contexto
-            sozinho. Um handler que reescrevesse `ctx.observacoes` a cada tecla
-            recriaria o Content e o cursor pularia para o fim — o mesmo motivo
-            que está documentado no `livre_mudou`. -->
-          <text class="rotulo">OBSERVAÇÕES GERAIS SOBRE A OBRA (OPCIONAL)</text>
-          <text class="ajuda">
-            Valem para a obra inteira: tom, profundidade, o que evitar,
-            que tecnologias usar nos exemplos.
-          </text>
-          <textarea
-            class="campo campo-alto"
-            placeholder="ex.: exemplos sempre em Rust; nada de analogias com culinária; assuma que o leitor já programa."
-            value="observacoes"
-          />
+          text(
+            "Volte ao início, diga o assunto e clique em Refinar.",
+            class = ajuda,
+          )
 
-          <row class="linha">
-            <column class="dupla">
-              <text class="corpo">Pronto para gerar {tipo_artigo}?</text>
-              <text class="nota">{aviso_gerar}</text>
-            </column>
-            <button
-              class="btn-gerar"
-              text="Generate"
-              on_click="gerar"
-              disabled="{ocupado}"
-            />
-          </row>
-        </column>
+          button("Ir para o início", class = btn-primario, navigate_to = inicio)
+        }
 
-      </column>
-    </container>
-  </container>
-</screen>
+        alert("@erro", variant = error, if = @tem_erro, equals = true)
+
+        // ── observações gerais + gerar ───────────────────────────────────
+        column(class = painel, if = @tem_perguntas, equals = true) {
+          // O que a entrevista não pergunta. As perguntas são geradas pela IA
+          // a partir do assunto, então elas cobrem o assunto — nunca o COMO:
+          // tom, profundidade, o que evitar, em que linguagem os exemplos. Isto
+          // entra nos três prompts (esboço, cada trecho e cada abertura), e é a
+          // única coisa da tela que alcança as centenas de chamadas da produção.
+          //
+          // Sem `on_change`: o motor já espelha o texto do editor no contexto
+          // sozinho. Um handler que reescrevesse `ctx.observacoes` a cada tecla
+          // recriaria o Content e o cursor pularia para o fim — o mesmo motivo
+          // que está documentado no `livre_mudou`.
+          text("OBSERVAÇÕES GERAIS SOBRE A OBRA (OPCIONAL)", class = rotulo)
+
+          text(
+            """
+              Valem para a obra inteira: tom, profundidade, o que evitar, que
+              tecnologias usar nos exemplos.
+            """,
+            class = ajuda,
+          )
+
+          textarea(
+            class = "campo campo-alto",
+            placeholder = "ex.: exemplos sempre em Rust; nada de analogias com culinária; assuma que o leitor já programa.",
+            :value = observacoes,
+          )
+
+          row(class = linha) {
+            column(class = dupla) {
+              text("Pronto para gerar @tipo_artigo?", class = corpo)
+              text("@aviso_gerar", class = nota)
+            }
+
+            button(
+              Generate,
+              class = btn-gerar,
+              on_click = gerar,
+              disabled = @ocupado,
+            )
+          }
+        }
+      }
+    }
+  }
+}

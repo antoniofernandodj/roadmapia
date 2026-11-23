@@ -21,7 +21,7 @@ do conteúdo que cobram.
 
 ### 1.1 Tela `inicio` — a configuração
 
-Um painel novo, visível **só quando "Curso" está marcado** (`if="{tipo_curso}"`),
+Um painel novo, visível **só quando "Curso" está marcado** (`if = @tipo_curso`),
 entre o painel do tipo e o do modelo:
 
 ```
@@ -260,7 +260,7 @@ material que muda de regra no fim.
 
 ### 4.3 `ui/scripts/inicio.luau` + `ui/inicio.gv`
 
-- Painel novo (§1.1) sob `if="{tipo_curso}" equals="true"`.
+- Painel novo (§1.1) sob `if = @tipo_curso, equals = true`.
 - `ctx.quer_exercicios`, `ctx.n_exercicios`, `ctx.quer_prova`, `ctx.n_questoes`,
   com padrões `"true" / "10" / "true" / "40"` no `init`.
 - `alternar_exercicios()`, `alternar_prova()`, `n_exercicios_mudou(texto)`,

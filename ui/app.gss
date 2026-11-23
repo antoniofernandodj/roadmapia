@@ -5,21 +5,42 @@
    Regra da casa: nada de geometria na markup. Largura, altura, espaçamento e
    alinhamento moram aqui; o `.gv` só diz o que a coisa É (`class="painel"`,
    `class="linha"`). Só sobra inline o que muda em tempo de execução — uma cor
-   vinda do script, um `{placeholder}`. */
+   vinda do script, um `@chave`. */
+
+/* ── paleta ─────────────────────────────────────────────────────────── */
+
+/* As cores com nome de papel (base Catppuccin Mocha). As regras abaixo só
+   falam em `var(--x)`; os tons que aparecem uma vez só (hover e pressionado
+   de cada botão) ficam literais ao lado de quem os usa. */
+:root {
+  --fundo: #11111B;
+  --base: #1E1E2E;
+  --manto: #181825;
+  --borda: #313244;
+  --borda-alta: #45475A;
+  --texto: #CDD6F4;
+  --texto-2: #A6ADC8;
+  --fraco: #7F849C;
+  --mais-fraco: #6C7086;
+  --rosado: #F5E0DC;
+  --azul: #89B4FA;
+  --verde: #A6E3A1;
+  --vermelho: #F38BA8;
+}
 
 /* ── superfícies ─────────────────────────────────────────────────────── */
 
-.tela        { width: fill; height: fill; background: #11111B; padding: 28; }
+.tela        { width: fill; height: fill; background: var(--fundo); padding: 28; }
 .coluna      { width: fill; spacing: 18; }
 /* A coluna central das telas de leitura: largura de linha confortável, em vez
    de texto atravessando a janela inteira. */
 .miolo       { width: 720; spacing: 18; }
-.painel      { width: fill; padding: 20; spacing: 10; background: #181825;
-               border-radius: 14; border-width: 1; border-color: #313244; }
-.painel-alto { width: fill; padding: 22; spacing: 10; background: #1E1E2E;
-               border-radius: 16; border-width: 1; border-color: #45475A; }
-.faixa       { width: fill; padding: 12 16; background: #181825;
-               border-radius: 10; border-width: 1; border-color: #313244; }
+.painel      { width: fill; padding: 20; spacing: 10; background: var(--manto);
+               border_radius: 14; border_width: 1; border_color: var(--borda); }
+.painel-alto { width: fill; padding: 22; spacing: 10; background: var(--base);
+               border_radius: 16; border_width: 1; border_color: var(--borda-alta); }
+.faixa       { width: fill; padding: 12 16; background: var(--manto);
+               border_radius: 10; border_width: 1; border_color: var(--borda); }
 
 /* ── arranjo ─────────────────────────────────────────────────────────── */
 
@@ -37,28 +58,28 @@
 /* Toda linha horizontal: ocupa a largura, centra os filhos no eixo Y e dá o
    mesmo respiro entre eles. Um único espaçamento para todas — botões de ação,
    cabeçalhos e barras de status ficam com o mesmo compasso. */
-.linha  { width: fill; spacing: 12; align-y: Center; }
+.linha  { width: fill; spacing: 12; align_y: Center; }
 
 /* Utilitários de um eixo só, para combinarem em qualquer ordem. */
 .largo  { width: fill; }   /* também o vão vazio que empurra o resto da linha */
 .cresce { height: fill; }
-.centro { width: fill; align-x: Center; }
+.centro { width: fill; align_x: Center; }
 
 /* ── tipografia ──────────────────────────────────────────────────────── */
 
-.titulo      { size: 28; bold: true; color: #F5E0DC; }
+.titulo      { size: 28; bold: true; color: var(--rosado); }
 /* Cabeçalho das telas internas: mesmo título, um tom abaixo, porque ali a obra
    já é conhecida e o conteúdo é que importa. */
-.titulo-obra { size: 22; bold: true; color: #F5E0DC; }
-.subtitulo   { size: 13; color: #A6ADC8; }
-.rotulo      { size: 12; bold: true; color: #A6ADC8; }
-.pergunta    { size: 21; bold: true; color: #CDD6F4; }
-.ajuda       { size: 12; color: #7F849C; }
-.corpo       { size: 14; color: #CDD6F4; }
-.nota        { size: 12; color: #6C7086; }
-.erro        { size: 13; color: #F38BA8; }
-.ok          { size: 13; color: #A6E3A1; }
-.contador    { size: 12; bold: true; color: #89B4FA; }
+.titulo-obra { size: 22; bold: true; color: var(--rosado); }
+.subtitulo   { size: 13; color: var(--texto-2); }
+.rotulo      { size: 12; bold: true; color: var(--texto-2); }
+.pergunta    { size: 21; bold: true; color: var(--texto); }
+.ajuda       { size: 12; color: var(--fraco); }
+.corpo       { size: 14; color: var(--texto); }
+.nota        { size: 12; color: var(--mais-fraco); }
+.erro        { size: 13; color: var(--vermelho); }
+.ok          { size: 13; color: var(--verde); }
+.contador    { size: 12; bold: true; color: var(--azul); }
 /* O número do capítulo numa lista: largura fixa para os títulos alinharem
    quando a numeração passa de um dígito. */
 .num         { width: 28; }
@@ -68,7 +89,7 @@
 /* ── controles ───────────────────────────────────────────────────────── */
 
 .campo         { width: fill; padding: 12; size: 14; }
-.campo:focus   { border-color: #89B4FA; }
+.campo:focus   { border_color: var(--azul); }
 /* Alturas das áreas de texto: a resposta livre pede espaço para um parágrafo;
    os resumos são de uma ou duas linhas. */
 .campo-alto    { height: 110; }
@@ -77,7 +98,7 @@
    porque nenhuma outra sobrepõe uma propriedade que `.campo` já define, e
    este seria o primeiro caso a depender dessa ordem. */
 .campo-num       { width: 90; padding: 12; size: 14; }
-.campo-num:focus { border-color: #89B4FA; }
+.campo-num:focus { border_color: var(--azul); }
 .campo-resumo  { height: 60; }
 
 /* O padding VERTICAL é 12 em todas as variantes, e a altura é fixa: numa mesma
@@ -85,36 +106,44 @@
    de alturas ligeiramente diferentes — desalinhamento que se vê na hora. Só o
    padding horizontal varia, para dar mais respiro ao botão principal. */
 
-.btn           { height: 44; padding: 12 22; border-radius: 10; background: #313244; text-color: #CDD6F4; }
-.btn:hover     { background: #45475A; }
-.btn:active    { background: #1E1E2E; }
-.btn:disabled  { background: #181825; text-color: #45475A; }
+/* No botão, o fundo de repouso é `color` e o dos estados é `background`: é
+   o que deixa o `transition` animar a troca em vez de saltar.
 
-.btn-primario          { height: 44; padding: 12 26; border-radius: 10; background: #89B4FA; text-color: #11111B; bold: true; }
+   O rótulo desabilitado é o próprio `--texto` a 30% de alfa sobre o fundo
+   apagado — lê-se "inativo" sem depender de um cinza à parte. (Controle
+   inativo é isento do mínimo de contraste do WCAG; com alfa, o aviso do
+   motor também não o mede.) */
+
+.btn           { height: 44; padding: 12 22; border_radius: 10; color: var(--borda); text_color: var(--texto); transition: background 120ms ease-out; }
+.btn:hover     { background: var(--borda-alta); }
+.btn:active    { background: var(--base); }
+.btn:disabled  { background: var(--manto); text_color: #CDD6F44D; }
+
+.btn-primario          { height: 44; padding: 12 26; border_radius: 10; color: var(--azul); text_color: var(--fundo); bold: true; transition: background 120ms ease-out; }
 .btn-primario:hover    { background: #A6C8FF; }
 .btn-primario:active   { background: #6E93D6; }
-.btn-primario:disabled { background: #1E2436; text-color: #45475A; }
+.btn-primario:disabled { background: #1E2436; text_color: #CDD6F44D; }
 
-.btn-gerar          { height: 44; padding: 12 30; border-radius: 10; background: #A6E3A1; text-color: #11111B; bold: true; }
+.btn-gerar          { height: 44; padding: 12 30; border_radius: 10; color: var(--verde); text_color: var(--fundo); bold: true; transition: background 120ms ease-out; }
 .btn-gerar:hover    { background: #C4F0C0; }
-.btn-gerar:disabled { background: #1E2A20; text-color: #45475A; }
+.btn-gerar:disabled { background: #1E2A20; text_color: #CDD6F44D; }
 
 /* Botão secundário: menor de propósito (é navegação, não ação), mas com altura
    própria fixa para os secundários ficarem alinhados entre si. */
-.btn-sutil          { height: 36; padding: 8 16; border-radius: 8; background: #1E1E2E; text-color: #A6ADC8; }
-.btn-sutil:hover    { background: #313244; text-color: #CDD6F4; }
-.btn-sutil:disabled { background: #16161F; text-color: #45475A; }
+.btn-sutil          { height: 36; padding: 8 16; border_radius: 8; color: var(--base); text_color: var(--texto-2); transition: all 120ms ease-out; }
+.btn-sutil:hover    { background: var(--borda); text_color: var(--texto); }
+.btn-sutil:disabled { background: #16161F; text_color: #CDD6F44D; }
 
 /* Uma opção sugerida pela IA. A cor de fundo vem inline (o script a calcula a
    partir do estado de seleção), então aqui ficam só forma e espaçamento. */
-.opcao        { width: fill; padding: 12 16; border-radius: 10; text-color: #CDD6F4; }
-.opcao:hover  { text-color: #FFFFFF; }
+.opcao        { width: fill; padding: 12 16; border_radius: 10; text_color: var(--texto); }
+.opcao:hover  { text_color: #FFFFFF; }
 
 /* ── indicadores ─────────────────────────────────────────────────────── */
 
 /* Spinner e barra de progresso têm sempre a mesma forma; só a cor muda, e ela
    acompanha a ação ao lado — azul para refinar, verde para produzir. */
-.spinner         { width: 18; height: 18; color: #A6E3A1; }
-.spinner-azul    { width: 18; height: 18; color: #89B4FA; }
-.progresso       { width: fill; height: 8; border-radius: 4; background: #313244; color: #89B4FA; }
-.progresso-verde { width: fill; height: 8; border-radius: 4; background: #313244; color: #A6E3A1; }
+.spinner         { width: 18; height: 18; color: var(--verde); }
+.spinner-azul    { width: 18; height: 18; color: var(--azul); }
+.progresso       { width: fill; height: 8; border_radius: 4; background: var(--borda); color: var(--azul); }
+.progresso-verde { width: fill; height: 8; border_radius: 4; background: var(--borda); color: var(--verde); }

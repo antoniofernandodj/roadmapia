@@ -51,9 +51,9 @@
 //! estado: quem anotou "# a chave do trabalho, expira em março" ao lado da
 //! chave ainda encontra a anotação lá depois de trocá-la pela tela.
 
+use glacier_ui::GlacierUI;
 use std::io;
 use std::path::{Path, PathBuf};
-use glacier_ui::GlacierUI;
 
 /// O arquivo `.ini` carregado: as linhas cruas (para reescrever preservando o
 /// que não é nosso) e o caminho de onde vieram — ou para onde vão.
@@ -325,7 +325,6 @@ pub fn telas() -> [(&'static str, &'static str); 4] {
     ]
 }
 
-
 /// Diretório que contém os templates (`ui/`), procurado nesta ordem:
 ///
 /// 1. `$ROADMAPIA_UI` — override explícito.
@@ -350,22 +349,19 @@ pub fn ui_dir() -> PathBuf {
     }
     if let Some(base) = std::env::current_exe()
         .ok()
-        .and_then(|e| e.parent().map(PathBuf::from)) {
-            let ao_lado = base.join("ui");
-            if ao_lado.is_dir() {
-                return ao_lado;
-            }
-            let fhs = base
-                .join("..")
-                .join("share")
-                .join("roadmapia")
-                .join("ui");
-
-            if fhs.is_dir() {
-                return fhs;
-            }
+        .and_then(|e| e.parent().map(PathBuf::from))
+    {
+        let ao_lado = base.join("ui");
+        if ao_lado.is_dir() {
+            return ao_lado;
         }
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ui")
+        let fhs = base.join("..").join("share").join("roadmapia").join("ui");
+
+        if fhs.is_dir() {
+            return fhs;
+        }
+    }
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ui")
 }
 
 /// `ui/<arquivo>` como string — os caminhos que o motor guarda para hot-reload.
@@ -441,7 +437,10 @@ pub fn persistir_config(motor: &GlacierUI) {
             continue;
         }
         if let Err(e) = cfg.set(secao(), chave, valor) {
-            eprintln!("config: não deu para gravar {}: {e}", cfg.caminho().display());
+            eprintln!(
+                "config: não deu para gravar {}: {e}",
+                cfg.caminho().display()
+            );
             return;
         }
     }

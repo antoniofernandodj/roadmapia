@@ -23,7 +23,7 @@ local SUBCAPITULOS = O.SUBCAPITULOS
 function init(): ()
     E.set_indice(E.indice())
     -- Uma vez, no registro: a partir daqui quem mantém `ctx.observacoes` é o
-    -- próprio motor, que espelha o texto do <textarea> no contexto a cada
+    -- próprio motor, que espelha o texto do `textarea` no contexto a cada
     -- tecla. Escrever aqui de novo jogaria o cursor para o fim.
     ctx.observacoes = ctx.observacoes or ""
     E.projetar()
@@ -33,7 +33,7 @@ end
 -- ── responder ───────────────────────────────────────────────────────────────
 
 --- Clique num chip de opção. A ação chega como `alternar:<n>`, com `<n>` o
---- índice (1-based) da opção dentro da pergunta em foco — o `for-each` do
+--- índice (1-based) da opção dentro da pergunta em foco — o `:for_each` do
 --- template o interpola no próprio nome da ação.
 ---
 --- É um TOGGLE, e a seleção é múltipla: um assunto raramente cabe numa opção só.

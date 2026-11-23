@@ -1,197 +1,239 @@
-<!-- Tela 1 — o pedido bruto.
-   O botão principal NÃO submete nada: ele leva o assunto para a IA e volta
-   com um questionário sob medida, que é o que a tela `perguntas` consome. -->
-<screen>
-  <resources>
-    <script src="scripts/inicio.luau"></script>
-  </resources>
+// Tela 1 — o pedido bruto.
+// O botão principal NÃO submete nada: ele leva o assunto para a IA e volta
+// com um questionário sob medida, que é o que a tela `perguntas` consome.
+screen {
+  resources {
+    script(src = "scripts/inicio.luau")
+  }
 
-  <container class="tela">
-    <scrollable class="largo cresce" direction="vertical">
-      <container class="centro">
-        <column class="miolo">
+  container(class = tela) {
+    scrollable(class = "largo cresce", direction = vertical) {
+      container(class = centro) {
+        column(class = miolo) {
+          row(class = linha) {
+            column(class = dupla) {
+              text("roadmapia", class = titulo)
 
-          <row class="linha">
-            <column class="dupla">
-              <text class="titulo">roadmapia</text>
-              <text class="subtitulo">
-                Diga o assunto, responda algumas perguntas, receba o material.
-              </text>
-            </column>
-            <button
-              class="btn-sutil"
-              text="Retomar rascunho salvo"
-              on_click="continuar_rascunho"
-            />
-          </row>
+              text(
+                """
+                  Diga o assunto, responda algumas perguntas, receba o material.
+                """,
+                class = subtitulo,
+              )
+            }
 
-          <!-- ── 1. o assunto ───────────────────────────────────────────────── -->
-          <column class="painel-alto">
-            <text class="rotulo">
-              1 · SOBRE O QUE?
-            </text>
-            <input
-              class="campo"
-              placeholder="ex.: Rust para quem já programa em Python, com foco em CLIs"
-              value="assunto"
-              on_change="assunto_mudou"
-            />
-            <text class="ajuda">
-              Quanto mais contexto aqui, mais afiadas as perguntas de refinamento.
-            </text>
-          </column>
+            button(
+              "Retomar rascunho salvo",
+              class = btn-sutil,
+              on_click = continuar_rascunho,
+            )
+          }
 
-          <!-- ── 2. o tipo de artefato ──────────────────────────────────────── -->
-          <column class="painel">
-            <text class="rotulo">2 · O QUE GERAR?</text>
-            <column class="bloco">
-              <checkbox
-                label="Roadmap — trilha por fases, com marcos e dependências"
-                checked="tipo_roadmap"
-                on_toggle="escolher_tipo:roadmap"
-              />
-              <checkbox
-                label="Curso — módulos, aulas, exercícios e avaliação"
-                checked="tipo_curso"
-                on_toggle="escolher_tipo:curso"
-              />
-              <checkbox
-                label="Guia — referência prática, direto ao ponto"
-                checked="tipo_guia"
-                on_toggle="escolher_tipo:guia"
-              />
-            </column>
-          </column>
+          // ── 1. o assunto ─────────────────────────────────────────────────
+          column(class = painel-alto) {
+            text("1 · SOBRE O QUE?", class = rotulo)
 
-          <!-- ── 3. exercícios e prova (só para curso) ──────────────────────── -->
-          <!-- Um curso sem exercício e sem avaliação é um livro com capa de
-            curso — e é o que o próprio rótulo do tipo promete. O painel só
-            aparece para "Curso": `A.config` zera a avaliação fora dele, então
-            marcar "guia" nunca produz um guia com prova. -->
-          <column class="painel" if="{tipo_curso}" equals="true">
-            <text class="rotulo">3 · EXERCÍCIOS E PROVA</text>
-            <column class="bloco">
-              <checkbox
-                label="Lista de exercícios ao fim de cada capítulo"
-                checked="quer_exercicios"
-                on_toggle="alternar_exercicios"
-              />
-              <row class="linha" if="{quer_exercicios}" equals="true">
-                <input
-                  class="campo-num"
-                  placeholder="10"
-                  value="n_exercicios"
-                  on_change="n_exercicios_mudou"
-                />
-                <text class="ajuda largo">exercícios por capítulo (até 40)</text>
-              </row>
+            input(
+              class = campo,
+              placeholder = "ex.: Rust para quem já programa em Python, com foco em CLIs",
+              :value = assunto,
+              on_change = assunto_mudou,
+              autofocus = true,
+            )
 
-              <checkbox
-                label="Prova final da obra"
-                checked="quer_prova"
-                on_toggle="alternar_prova"
-              />
-              <row class="linha" if="{quer_prova}" equals="true">
-                <input
-                  class="campo-num"
-                  placeholder="40"
-                  value="n_questoes"
-                  on_change="n_questoes_mudou"
-                />
-                <text class="ajuda largo">questões na prova (até 120)</text>
-              </row>
-            </column>
+            text(
+              """
+                Quanto mais contexto aqui, mais afiadas as perguntas de
+                refinamento.
+              """,
+              class = ajuda,
+            )
+          }
 
-            <!-- A conta aparece ANTES de custar, como a amostra da produção. -->
-            <text class="nota" if="{tem_aviso_avaliacao}" equals="true">
-              {aviso_avaliacao}
-            </text>
-            <text class="erro" if="{tem_alerta_avaliacao}" equals="true">
-              {alerta_avaliacao}
-            </text>
-          </column>
+          // ── 2. o tipo de artefato ────────────────────────────────────────
+          column(class = painel) {
+            text("2 · O QUE GERAR?", class = rotulo)
 
-          <!-- ── 4. o modelo ────────────────────────────────────────────────── -->
-          <column class="painel">
-            <row class="linha">
-              <text class="rotulo largo">4 · MODELO E CHAVE</text>
-              <button
-                class="btn-sutil"
-                text="{rotulo_avancado}"
-                on_click="alternar_avancado"
-              />
-            </row>
+            column(class = bloco) {
+              checkbox(
+                label = "Roadmap — trilha por fases, com marcos e dependências",
+                :checked = tipo_roadmap,
+                on_toggle = escolher_tipo:roadmap,
+              )
 
-            <column class="bloco" if="{mostrar_avancado}">
-              <column class="grupo">
-                <text class="ajuda">Modelo (OpenRouter)</text>
-                <select
-                  class="campo"
-                  options="modelos"
-                  value="modelo"
-                  on_change="modelo_mudou"
-                  placeholder="escolha um modelo"
-                />
-              </column>
+              checkbox(
+                label = "Curso — módulos, aulas, exercícios e avaliação",
+                :checked = tipo_curso,
+                on_toggle = escolher_tipo:curso,
+              )
 
-              <column class="grupo">
-                <text class="ajuda">Ou um id qualquer do catálogo do OpenRouter</text>
-                <input
-                  class="campo"
-                  placeholder="autor/modelo"
-                  value="modelo"
-                  on_change="modelo_mudou"
-                />
-              </column>
+              checkbox(
+                label = "Guia — referência prática, direto ao ponto",
+                :checked = tipo_guia,
+                on_toggle = escolher_tipo:guia,
+              )
+            }
+          }
 
-              <!-- O campo aparece SEMPRE, inclusive com a chave vindo do
-                   ambiente: como o `.ini` vence o ambiente, digitar aqui é a
-                   forma de trocar de chave sem sair do app. Quem diz de onde a
-                   que está valendo veio é a nota logo abaixo. -->
-              <column class="grupo">
-                <text class="ajuda">
-                  Chave da API (fica guardada no arquivo de configuração)
-                </text>
-                <input
-                  class="campo"
-                  placeholder="sk-or-v1-..."
-                  value="api_key"
-                  on_change="chave_mudou"
-                  secure="true"
-                />
-              </column>
-              <text class="ok" if="{tem_nota_chave}" equals="true">{nota_chave}</text>
-            </column>
+          // ── 3. exercícios e prova (só para curso) ────────────────────────
+          // Um curso sem exercício e sem avaliação é um livro com capa de
+          // curso — e é o que o próprio rótulo do tipo promete. O painel só
+          // aparece para "Curso": `A.config` zera a avaliação fora dele, então
+          // marcar "guia" nunca produz um guia com prova.
+          column(class = painel, if = @tipo_curso, equals = true) {
+            text("3 · EXERCÍCIOS E PROVA", class = rotulo)
 
-            <text class="nota" if="{mostrar_avancado}" not_equals="true">
-              {resumo_config}
-            </text>
-          </column>
+            column(class = bloco) {
+              checkbox(
+                label = "Lista de exercícios ao fim de cada capítulo",
+                :checked = quer_exercicios,
+                on_toggle = alternar_exercicios,
+              )
 
-          <!-- ── ação ───────────────────────────────────────────────────────── -->
-          <row class="linha">
-            <button
-              class="btn-primario"
-              text="Refinar com perguntas →"
-              on_click="refinar"
-              disabled="{ocupado}"
-            />
-            <button
-              class="btn"
-              text="Retomar entrevista"
-              navigate_to="perguntas"
-              hidden="{sem_perguntas}"
-            />
-            <spinner class="spinner-azul" hidden="{parado}" />
-            <text class="corpo largo" content="{status}" />
-          </row>
+              row(class = linha, if = @quer_exercicios, equals = true) {
+                input(
+                  class = campo-num,
+                  placeholder = 10,
+                  :value = n_exercicios,
+                  on_change = n_exercicios_mudou,
+                )
 
-          <container class="faixa" if="{tem_erro}" equals="true">
-            <text class="erro" content="{erro}" />
-          </container>
+                text("exercícios por capítulo (até 40)", class = "ajuda largo")
+              }
 
-        </column>
-      </container>
-    </scrollable>
-  </container>
-</screen>
+              checkbox(
+                label = "Prova final da obra",
+                :checked = quer_prova,
+                on_toggle = alternar_prova,
+              )
+
+              row(class = linha, if = @quer_prova, equals = true) {
+                input(
+                  class = campo-num,
+                  placeholder = 40,
+                  :value = n_questoes,
+                  on_change = n_questoes_mudou,
+                )
+
+                text("questões na prova (até 120)", class = "ajuda largo")
+              }
+            }
+
+            // A conta aparece ANTES de custar, como a amostra da produção.
+            text(
+              "@aviso_avaliacao",
+              class = nota,
+              if = @tem_aviso_avaliacao,
+              equals = true,
+            )
+
+            alert(
+              "@alerta_avaliacao",
+              variant = warning,
+              if = @tem_alerta_avaliacao,
+              equals = true,
+            )
+          }
+
+          // ── 4. o modelo ──────────────────────────────────────────────────
+          column(class = painel) {
+            row(class = linha) {
+              text("4 · MODELO E CHAVE", class = "rotulo largo")
+
+              button(
+                "@rotulo_avancado",
+                class = btn-sutil,
+                on_click = alternar_avancado,
+              )
+            }
+
+            column(class = bloco, if = @mostrar_avancado) {
+              column(class = grupo) {
+                text("Modelo (OpenRouter)", class = ajuda)
+
+                select(
+                  class = campo,
+                  :options = modelos,
+                  :value = modelo,
+                  on_change = modelo_mudou,
+                  placeholder = "escolha um modelo",
+                )
+              }
+
+              column(class = grupo) {
+                text(
+                  "Ou um id qualquer do catálogo do OpenRouter",
+                  class = ajuda,
+                )
+
+                input(
+                  class = campo,
+                  placeholder = "autor/modelo",
+                  :value = modelo,
+                  on_change = modelo_mudou,
+                )
+              }
+
+              // O campo aparece SEMPRE, inclusive com a chave vindo do
+              // ambiente: como o `.ini` vence o ambiente, digitar aqui é a
+              // forma de trocar de chave sem sair do app. Quem diz de onde a
+              // que está valendo veio é a nota logo abaixo.
+              column(class = grupo) {
+                text(
+                  """
+                    Chave da API (fica guardada no arquivo de configuração)
+                  """,
+                  class = ajuda,
+                )
+
+                input(
+                  class = campo,
+                  placeholder = sk-or-v1-...,
+                  :value = api_key,
+                  on_change = chave_mudou,
+                  secure = true,
+                )
+              }
+
+              text(
+                "@nota_chave",
+                class = ok,
+                if = @tem_nota_chave,
+                equals = true,
+              )
+            }
+
+            text(
+              "@resumo_config",
+              class = nota,
+              if = @mostrar_avancado,
+              not_equals = true,
+            )
+          }
+
+          // ── ação ─────────────────────────────────────────────────────────
+          row(class = linha) {
+            button(
+              "Refinar com perguntas →",
+              class = btn-primario,
+              on_click = refinar,
+              disabled = @ocupado,
+            )
+
+            button(
+              "Retomar entrevista",
+              class = btn,
+              navigate_to = perguntas,
+              hidden = @sem_perguntas,
+            )
+
+            spinner(class = spinner-azul, hidden = @parado)
+            text("@status", class = "corpo largo")
+          }
+
+          alert("@erro", variant = error, if = @tem_erro, equals = true)
+        }
+      }
+    }
+  }
+}

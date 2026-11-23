@@ -192,7 +192,7 @@ end
 -- ── projeção para a tela ────────────────────────────────────────────────────
 
 --- Achata a pergunta em foco em chaves simples que o template lê direto.
---- As opções viram uma lista de `{ i, rotulo, cor }` para o `for-each`: a cor
+--- As opções viram uma lista de `{ i, rotulo, cor }` para o `:for_each`: a cor
 --- e o "✓" no rótulo são o estado de seleção — sem uma chave de contexto por
 --- opção, e sem checkbox por linha.
 ---

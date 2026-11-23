@@ -820,9 +820,14 @@ function O.registrar_conceitos(plano: Plano, ci: number, si: number, conceitos: 
     if type(plano.repeticoes) ~= "table" then
         plano.repeticoes = json.array({})
     end
+    -- Locais com o tipo já sem `?`: o checker não estreita o campo opcional
+    -- de uma tabela pelo `type()` acima. São as mesmas tabelas do plano, então
+    -- inserir nelas continua mutando o plano no lugar.
+    local ensinado = plano.ensinado :: { Conceito }
+    local repeticoes = plano.repeticoes :: { Repeticao }
 
-    local por_chave = {}
-    for _, c in ipairs(plano.ensinado) do
+    local por_chave: { [string]: Conceito } = {}
+    for _, c in ipairs(ensinado) do
         por_chave[c.chave] = c
     end
 
@@ -830,13 +835,13 @@ function O.registrar_conceitos(plano: Plano, ci: number, si: number, conceitos: 
         local chave = O.slug(termo)
         local dono = por_chave[chave]
         if dono == nil then
-            if #plano.ensinado < MAX_ENSINADO then
+            if #ensinado < MAX_ENSINADO then
                 local novo = { termo = termo, chave = chave, cap = ci, sub = si }
-                table.insert(plano.ensinado, novo)
+                table.insert(ensinado, novo)
                 por_chave[chave] = novo
             end
         elseif dono.cap ~= ci then
-            table.insert(plano.repeticoes, {
+            table.insert(repeticoes, {
                 termo = termo,
                 dono = O.endereco(dono.cap, dono.sub),
                 repetidor = O.endereco(ci, si),

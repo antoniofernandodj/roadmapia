@@ -37,16 +37,15 @@ function RASCUNHO.salvar(esboco_json: string?, tipo: string?, assunto: string?, 
 end
 
 --- Lê o rascunho do disco, se houver — `nil` se não há arquivo, se está
---- vazio (ver `limpar`) ou corrompido. SUSPENDE a corrotina (via
---- `fetch("file://…")`, a única forma de ler um arquivo local aqui): só
---- chame de dentro de uma ação despachada (inclusive `init` — o motor drena
---- corrotinas de qualquer função que despacha, não só cliques).
+--- vazio (ver `limpar`) ou corrompido. Síncrono, como o `salvar`: o
+--- `read_file` não suspende a corrotina, então dá para chamar de qualquer
+--- handler.
 function RASCUNHO.carregar(): any?
-    local res = fetch("file://" .. RASCUNHO.ARQUIVO)
-    if not res.ok then
+    local corpo = read_file(RASCUNHO.ARQUIVO)
+    if corpo == nil or corpo == "" then
         return nil
     end
-    local ok, v = pcall(json.decode, res.body)
+    local ok, v = pcall(json.decode, corpo)
     if not ok or type(v) ~= "table" or type(v.esboco_json) ~= "string" or v.esboco_json == "" then
         return nil
     end

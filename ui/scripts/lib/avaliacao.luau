@@ -162,7 +162,7 @@ end
 
 -- ── a entrada da tela ───────────────────────────────────────────────────────
 
---- Um número digitado num `<input>` — que é texto, e texto que uma pessoa
+--- Um número digitado num `input` — que é texto, e texto que uma pessoa
 --- está no meio de digitar.
 ---
 --- Aceita vírgula (é um app em português; "7,5" é o que se digita) e trunca:

@@ -43,9 +43,10 @@ export type Handle = {
     send: (Handle, string) -> (),
 }
 
--- O contexto do motor é um mapa `string -> string`; ler uma chave ausente dá
--- `nil`, e atribuir uma tabela serializa via `json.encode` automaticamente.
--- Por isso `any`, e não `string`: os dois lados da conversão são válidos.
+-- O markup lê TEXTO, mas o script lê o tipo que gravou (glacier-ui 0.135+):
+-- `boolean`, `number` ou `table` voltam como foram gravados; o que veio do
+-- markup, de um widget ou de uma string escrita à mão volta texto. Ler uma
+-- chave ausente dá `nil`. Daí `any`: o tipo depende de quem escreveu a chave.
 declare ctx: { [string]: any }
 
 -- O texto de um `on_change`/`on_toggle` — 1º argumento da ação e também global.
@@ -83,8 +84,14 @@ declare function pick_folder(opts: any?): string?
 
 -- Arquivos. Todos criam os diretórios que faltarem e devolvem `(ok, erro?)`;
 -- `write_file` sobrescreve, `append_file` acrescenta, `zip_dir` compacta um
--- diretório inteiro num `.zip` escrito direto no caminho de destino.
+-- diretório inteiro num `.zip` escrito direto no caminho de destino. Todos
+-- síncronos (não suspendem) e, desde a 0.168, gravam a string como bytes.
 declare function write_file(caminho: string, conteudo: string): (boolean, string?)
+-- Lê o arquivo inteiro sem suspender (0.168+): o conteúdo, ou `nil, mensagem`.
+declare function read_file(caminho: string): (string?, string?)
+-- Grava na pasta Downloads do sistema, sem diálogo e sem sobrescrever (0.160+):
+-- `true, caminho` ou `false, mensagem`.
+declare function save_download(nome: string, conteudo: string): (boolean, string)
 declare function append_file(caminho: string, conteudo: string): (boolean, string?)
 declare function zip_dir(origem: string, destino: string): (boolean, string?)
 
@@ -105,4 +112,13 @@ declare json: {
     -- Marca uma tabela como ARRAY para o encode, resolvendo a ambiguidade da
     -- tabela vazia (`{}` vira `{}`; `json.array({})` vira `[]`).
     array: <T>(T) -> T,
+    -- Marca a tabela como OBJETO (mesmo vazia): sem a marca, uma tabela vazia
+    -- gravada no `ctx` vira `[]` (0.136+).
+    object: <T>(T) -> T,
+}
+
+-- Base64 <-> bytes (0.168+). `decode` devolve os bytes ou `nil, mensagem`.
+declare base64: {
+    encode: (string) -> string,
+    decode: (string) -> (string?, string?),
 }
