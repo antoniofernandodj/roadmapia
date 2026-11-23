@@ -317,6 +317,11 @@ distinguível de uma falha de rede, e cada worker anuncia quando entra e sai.
 ```bash
 cargo run -- --check    # tudo: templates, .gss, layout, suítes Luau, ações, log
 
+# a tela de revisão sem pagar a entrevista e o esboço: plano de exemplo de 12
+# capítulos (o curso de contabilidade em saidas/) com a conferência aplicada.
+# Sem chave, nada chega à IA; "Confirmar" só valida, e o rascunho vai para o temp.
+make demo               # = cargo run -- --demo revisao
+
 # integração: o pool de workers no motor de verdade (abre uma janela, ~15s)
 POOL_UI=tests/pool POOL_OUT=/tmp/pool.txt cargo run --example pool_concorrente
 cat /tmp/pool.txt   # espera: feitos=6 … sobrou=0

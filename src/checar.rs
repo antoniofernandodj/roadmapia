@@ -45,6 +45,7 @@ pub fn checar() -> std::process::ExitCode {
     falhas += simular_entrevista(&mut motor);
     falhas += simular_revisao(&mut motor);
     falhas += simular_producao(&mut motor);
+    falhas += simular_demo();
     falhas += simular_log(&mut motor);
 
     if falhas == 0 {
@@ -1323,4 +1324,91 @@ fn rodar_suites_luau() -> u8 {
     }
     println!("✓ suítes Luau ({total} casos: fila de produção, avaliação, openrouter)");
     0
+}
+
+/// `roadmapia --demo revisao`: abre na revisão com o plano de exemplo e a
+/// conferência aplicada, sem chave e sem gravar fora de uma pasta temporária.
+///
+/// Motor PRÓPRIO, e não o compartilhado: a demo depende do `init` rodar com
+/// `ctx.demo` já definido, que é o que acontece no app — no motor das outras
+/// simulações o `init` já rodou, com outro contexto.
+fn simular_demo() -> u8 {
+    use glacier_ui::EngineMessage as M;
+    let mut motor = GlacierUI::new();
+    let mut problemas: Vec<String> = Vec::new();
+
+    let dir = std::env::temp_dir().join("roadmapia-demo-check");
+    let _ = std::fs::remove_dir_all(&dir);
+    let _ = std::fs::create_dir_all(&dir);
+    motor.define_data("dir_saidas", &dir.to_string_lossy());
+    motor.define_data("demo", "revisao");
+    for (nome, arquivo) in telas() {
+        if let Err(e) = motor.register_component(nome, &ui(arquivo)) {
+            problemas.push(format!("registro de {nome}: {e}"));
+        }
+    }
+    motor.set_initial_screen("revisao");
+
+    fn esperar(m: &GlacierUI, k: &str, v: &str, oque: &str) -> Option<String> {
+        let obtido = m.get_data(k).cloned().unwrap_or_default();
+        (obtido != v).then(|| format!("{oque}: {k} = {obtido:?}, esperava {v:?}"))
+    }
+    problemas.extend(esperar(
+        &motor,
+        "rev_tem_esboco",
+        "true",
+        "o esboço de exemplo carrega",
+    ));
+    problemas.extend(esperar(
+        &motor,
+        "rev_n_capitulos",
+        "12",
+        "o exemplo tem o tamanho real",
+    ));
+    problemas.extend(esperar(
+        &motor,
+        "aud_tem_achados",
+        "true",
+        "a conferência aparece",
+    ));
+    problemas.extend(esperar(
+        &motor,
+        "aud_rotulo",
+        "11 ASSUNTOS PLANEJADOS EM DOIS LUGARES — CORRIGIDOS",
+        "os 11 achados passam pela trava de título e são aplicados",
+    ));
+    problemas.extend(esperar(&motor, "api_key", "", "a demo não tem chave"));
+
+    // Confirmar valida e para: não monta plano nem navega para a produção.
+    let _ = motor.dispatch(&M::UiClick("confirmar".into()));
+    if motor.current_screen_name() != Some("revisao") {
+        problemas.push(format!(
+            "confirmar na demo saiu da revisão (foi para {:?})",
+            motor.current_screen_name()
+        ));
+    }
+    problemas.extend(esperar(
+        &motor,
+        "tem_erro",
+        "false",
+        "o plano de exemplo é válido",
+    ));
+    if dir.join("demo-revisao").exists() {
+        problemas.push("confirmar na demo gravou a obra em disco".into());
+    }
+    // O rascunho que a revisão grava a cada edição foi para a pasta da demo.
+    if !dir.join(".rascunho-esboco.json").exists() {
+        problemas.push("o rascunho da demo não foi para a pasta temporária".into());
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+
+    if problemas.is_empty() {
+        println!("✓ demo da revisão (12 capítulos, 11 achados, sem IA, sem gravar fora do temp)");
+        0
+    } else {
+        for p in &problemas {
+            eprintln!("✗ demo: {p}");
+        }
+        1
+    }
 }

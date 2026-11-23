@@ -16,6 +16,7 @@ local Rascunho = require("lib/rascunho")
 local A = require("lib/avaliacao")
 local OR = require("lib/openrouter")
 local P = require("lib/prompts")
+local Demo = require("lib/demo")
 
 local R = {}
 
@@ -254,6 +255,34 @@ function R.set_achados(lista: any, e: any)
         end
     end
     ctx.auditoria_json = json.encode(json.array(saida))
+end
+
+--- O modo demo (`roadmapia --demo revisao`): põe na tela um esboço do tamanho
+--- de uma obra real e a conferência já aplicada, sem chamar a IA. Passa pelos
+--- MESMOS caminhos da conferência de verdade (`set_achados` + `aplicar_achado`),
+--- então o que a demo mostra é o que a tela faz — não uma imitação dela.
+---
+--- O rascunho que `set_esboco` grava vai para a pasta de saída, que na demo o
+--- Rust aponta para um diretório temporário: o rascunho real fica intacto.
+--- Devolve quantos achados foram aplicados.
+function R.carregar_demo(): number
+    ctx.tipo = "curso"
+    ctx.assunto = "Contabilidade tributária e a reforma tributária"
+    ctx.esboco_slug_base = "demo-revisao"
+    ctx.quer_exercicios = "true"
+    ctx.n_exercicios = "10"
+    ctx.quer_prova = "true"
+    ctx.n_questoes = "40"
+    local e = Demo.esboco()
+    R.set_esboco(e)
+    R.set_achados(Demo.achados(), e)
+    local aplicados = 0
+    for i = 1, #R.achados() do
+        if R.aplicar_achado(i) then
+            aplicados += 1
+        end
+    end
+    return aplicados
 end
 
 --- Aplica um achado: troca o foco do repetidor. Devolve `ok, motivo`.

@@ -27,6 +27,10 @@ build: ## Compila em modo release (Linux)
 run: ## Roda em modo debug
 	cargo run
 
+.PHONY: demo
+demo: ## Abre a revisão com um plano de exemplo, sem chamar a IA nem gastar créditos
+	cargo run -- --demo revisao
+
 .PHONY: check
 check: ## Verifica templates, estilos, Luau e simulações de fluxo (`--check`)
 	cargo run --quiet -- --check

@@ -23,6 +23,9 @@ local SUBCAPITULOS = O.SUBCAPITULOS
 
 function init(): ()
     ctx.cap_sel = ctx.cap_sel or ""
+    if ctx.demo == "revisao" and (ctx.esboco_json or "") == "" then
+        L.info("revisao", "modo demo: " .. R.carregar_demo() .. " achados aplicados")
+    end
     E.erro(nil)
     refletir()
     R.projetar()
@@ -206,6 +209,10 @@ end
 --- substituindo o atual. Útil quando a IA errou feio demais para valer a pena
 --- corrigir campo a campo.
 function gerar_de_novo(): ()
+    if ctx.demo == "revisao" then
+        toast({ message = "Modo demo: nada é pedido à IA.", kind = "info" })
+        return
+    end
     if (ctx.api_key or "") == "" then
         E.erro("Falta a chave do OpenRouter (ajuste no início).")
         return
@@ -270,6 +277,13 @@ function confirmar(): ()
     local motivo = R.validar(e)
     if motivo ~= nil then
         E.erro(motivo)
+        return
+    end
+    -- Na demo, validar é o que interessa (é a mesma checagem de verdade); a
+    -- produção custaria dinheiro, e a demo existe justamente para não custar.
+    if ctx.demo == "revisao" then
+        E.erro(nil)
+        toast({ message = "Modo demo: o plano é válido, mas não é produzido.", kind = "info" })
         return
     end
 
