@@ -135,17 +135,44 @@ deb: ## Gera o .deb (binário em /usr/bin, ui/ em /usr/share/roadmapia)
 	@command -v cargo-deb >/dev/null 2>&1 || \
 		(echo "$(BOLD)Instalando cargo-deb...$(RESET)" && cargo install cargo-deb)
 	@rm -rf $(UI_DIR)/.glacier-storage $(UI_DIR)/scripts/.glacier-storage
-	cargo deb -o dist/
+	@mkdir -p dist
+	@# O caminho do .deb gerado é a última linha que o cargo-deb imprime. Fica
+	@# anotado para o `install` instalar ESTE pacote — e não o último de um
+	@# `ls`, que ordena como texto e na 0.10.0 instalaria a 0.9.0.
+	@# Sem pipe direto: no `sh` do make o status de `a | b` é o do `b`, e uma
+	@# falha do cargo-deb passaria despercebida.
+	@rm -f $(DEB_ULTIMO)
+	@cargo deb -o dist/ > $(DEB_ULTIMO).saida
+	@tail -1 $(DEB_ULTIMO).saida > $(DEB_ULTIMO) && rm -f $(DEB_ULTIMO).saida
+	@$(MAKE) --no-print-directory conferir-deb
 	@echo ""
 	@echo "$(GREEN)Pacote .deb:$(RESET)"
-	@ls -lh dist/*.deb
+	@ls -lh $$(cat $(DEB_ULTIMO))
+
+DEB_ULTIMO := dist/.ultimo-deb
+
+# A mesma conferência dos outros pacotes, lida de dentro do .deb: um pacote
+# sem `ui/` instala sem erro e abre uma janela vazia.
+.PHONY: conferir-deb
+conferir-deb:
+	@test -s $(DEB_ULTIMO) || (echo "$(RED)nenhum .deb gerado — rode 'make deb'$(RESET)" && exit 1)
+	@lista=$$(dpkg-deb -c $$(cat $(DEB_ULTIMO))); \
+	for f in usr/bin/$(APP) usr/share/$(APP)/ui/inicio.gv usr/share/$(APP)/ui/app.gss \
+	         usr/share/$(APP)/ui/scripts/inicio.luau usr/share/$(APP)/ui/scripts/lib/openrouter.luau \
+	         usr/share/applications/$(APP).desktop; do \
+		echo "$$lista" | grep -q "\./$$f\$$" || \
+			(echo "$(RED)PACOTE INCOMPLETO: falta /$$f no .deb$(RESET)" && exit 1) || exit 1; \
+	done; \
+	n=$$(echo "$$lista" | grep -c '/usr/share/$(APP)/ui/.*\.luau$$'); \
+	test "$$n" -ge 9 || (echo "$(RED)PACOTE INCOMPLETO: só $$n .luau no .deb (esperava 9+)$(RESET)" && exit 1); \
+	echo "$(GREEN)  .deb ok$(RESET) — $$n scripts .luau, templates, estilos e atalho presentes"
 
 # Vazio quando já se está como root (container/CI); senão usa sudo.
 SUDO := $(shell [ "$$(id -u)" = 0 ] || command -v sudo)
 
 .PHONY: install
-install: deb ## Instala no sistema via dpkg (usa sudo)
-	$(SUDO) dpkg -i $$(ls dist/$(APP)_*.deb | tail -1)
+install: check deb ## Confere, gera o .deb e instala no sistema via dpkg (usa sudo)
+	$(SUDO) dpkg -i $$(cat $(DEB_ULTIMO))
 	@command -v update-desktop-database >/dev/null 2>&1 && \
 		$(SUDO) update-desktop-database /usr/share/applications || true
 	@echo "$(GREEN)Instalado.$(RESET) Rode '$(APP)' ou procure no menu de aplicativos."

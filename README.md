@@ -257,8 +257,9 @@ duplicado".
 | `make check` | templates, estilos, Luau e as simulações de fluxo |
 | `make windows-dist` | `.exe` + `ui/` + instalador num `.zip` (cross-compile via cargo-xwin) |
 | `make linux-dist` | binário + `ui/` + instalador num `.tar.gz` |
-| `make deb` | `.deb` com o `ui/` em `/usr/share/roadmapia` |
-| `make install` | compila, empacota e instala via `dpkg` |
+| `make deb` | `.deb` com o `ui/` em `/usr/share/roadmapia` e o atalho no menu de aplicativos; confere o conteúdo do pacote antes de terminar |
+| `make install` | roda o `--check`, gera o `.deb` e instala via `dpkg` (pede sudo) — o pacote instalado é exatamente o que acabou de ser gerado |
+| `make uninstall` · `make reinstall` | remove o pacote · remove e instala de novo |
 
 Todo alvo de pacote termina numa conferência que falha alto se o `ui/` não foi
 junto: o app lê os templates em runtime, então um pacote sem eles compila,

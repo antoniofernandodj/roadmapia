@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=roadmapia
+Comment=Gera roadmaps, cursos e guias com IA
+Exec=/usr/bin/roadmapia
+Terminal=false
+Categories=Education;

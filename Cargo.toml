@@ -19,4 +19,7 @@ assets = [
     ["target/release/roadmapia", "usr/bin/", "755"],
     ["ui/**/*", "usr/share/roadmapia/ui/", "644"],
     ["packaging/linux/LEIA-ME.txt", "usr/share/doc/roadmapia/", "644"],
+    # O atalho do menu de aplicativos — sem ele o `make install` instalava um
+    # app que só abria pelo terminal.
+    ["packaging/linux/roadmapia.desktop", "usr/share/applications/", "644"],
 ]
